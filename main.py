@@ -1,38 +1,33 @@
 import os
 # if using Apple MPS, fall back to CPU for unsupported ops
 os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
-from matplotlib.table import Table
-import numpy as np
 import json
+import time
+import argparse
+from typing import List, Optional, Dict, Any
+
+import numpy as np
 import torch
-import matplotlib.pyplot as plt
 from PIL import Image
-import cv2
-import clip
 from rich import print
+from rich.table import Table as RichTable
+from rich import console as rich_console
+
+from cuda_device import device_check
+from console import Console
 from sam_utilities import predict_sam2, get_checkpoint_path, get_model_cfg_path
 from clip_utilities import ClipModel
 from sam2.build_sam import build_sam2
-from sam2.sam2_image_predictor import SAM2ImagePredictor
-from console import Console
-import argparse
-from rich.table import Table
-from rich.highlighter import Highlighter
-from rich import print as rich_print, console as rich_console
-from cuda_device import device_check
-import time
+# from sam2.sam2_image_predictor import SAM2ImagePredictor  # unused import
 
-def get_prompts():
+def get_prompts() -> List[str]:
     """
-    Generates a list of prompt strings by combining each item with every prefix and postfix.
-    
+    Generate a list of prompt strings by combining each item with every prefix and postfix.
+
     Returns:
-        list of str: 
-            A list containing all possible combinations of prefix + item + postfix.
-            Each element is a string formed by concatenating a prefix, an item, and a postfix.
-            The total number of prompts generated is len(items) * len(prefix_prompts) * len(postfix_prompts).
+        List[str]: All combinations of prefix + item + postfix.
     """
-    prompts = []
+    prompts: List[str] = []
     for item in _items:
         for prefix in _prefixes:
             for postfix in _postfixes:
@@ -43,10 +38,11 @@ def get_prompts():
         
     return prompts
  
-_items = []
-_prefixes = []
-_postfixes = []
-def get_item_from_list(prompt):
+_items: List[str] = []
+_prefixes: List[str] = []
+_postfixes: List[str] = []
+
+def get_item_from_list(prompt: str) -> Optional[str]:
     """
     Extracts the first item from a prompt string.
     Args:
@@ -58,14 +54,14 @@ def get_item_from_list(prompt):
             return item
     return None
 
-table = Table(title="SAM2 with CLIP Results", show_lines=True, show_header=True)
+table = RichTable(title="SAM2 with CLIP Results", show_lines=True, show_header=True)
 table.add_column("Status", style="")
 table.add_column("Item", style="bold")
 table.add_column("Prompt", style="black bold")
 table.add_column("Probability", style="green")
 table.add_column("File Name", style="dim")
 
-def main(args: argparse.Namespace):
+def main(args: argparse.Namespace) -> Dict[str, int]:
     """
     Initializes the main function for the script.
     This function sets up the environment, checks the device, loads models, and processes images.
@@ -109,18 +105,18 @@ def main(args: argparse.Namespace):
 
     return process(args, clip_model, sam2_model)
 
-def load_config(file_path: str) -> dict:
+def load_config(file_path: str) -> Dict[str, Any]:
     """
     Loads the configuration from a JSON file.
     Args:
         file_path (str): The path to the JSON configuration file.
     Returns:
-        dict: The loaded configuration as a dictionary.
+    Dict[str, Any]: The loaded configuration as a dictionary.
     """
     with open(file_path, "r") as f:
         return json.load(f)
 
-def process(args: argparse.Namespace, clip_model: ClipModel, sam2_model):
+def process(args: argparse.Namespace, clip_model: ClipModel, sam2_model) -> Dict[str, int]:
     """
     Processes images in the '--dataset-dir' directory using the SAM2 model for segmentation and CLIP model for classification.
     Outputs segmented images to the '--output-dir' directory, organized by identified item categories using the CLIP and SAM2 models.
@@ -137,7 +133,7 @@ def process(args: argparse.Namespace, clip_model: ClipModel, sam2_model):
     _postfixes = config.get("postfixes", ["there"])
 
     prompt_list = get_prompts()
-    prompts = [prompt for prompt in prompt_list]
+    prompts = prompt_list  # no need to copy
     Console.debug(f"⭕ [rosy_brown]Generated prompts: [bold]{len(prompts)}[/bold][rosy_brown] prompts[/rosy_brown]")
     Console.debug(f"🔍 [rosy_brown]2 Sample prompts: [bold]{', '.join(prompts[:2])}[/bold][rosy_brown]...[/rosy_brown]")
     Console.debug(f"🔃 [rosy_brown]Processing images[/rosy_brown] in [rosy_brown][bold]{args.dataset_dir}[/bold][/rosy_brown] 📂 [yellow]folder[/yellow]...")

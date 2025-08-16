@@ -1,21 +1,38 @@
 import os
-import numpy as np
-import torch
-import matplotlib.pyplot as plt
-from PIL import Image
-import cv2
+from typing import Any, List, Optional, Sequence, Tuple
 
-from sam2.build_sam import build_sam2
+import numpy as np
+from PIL import Image
+
+# Optional visualization deps
+try:  # matplotlib is only needed for visualization helpers
+    import matplotlib.pyplot as plt  # type: ignore
+except Exception:  # pragma: no cover - optional dependency
+    plt = None  # type: ignore
+
+try:  # OpenCV is only needed for border drawing in masks
+    import cv2  # type: ignore
+except Exception:  # pragma: no cover - optional dependency
+    cv2 = None  # type: ignore
+
 from sam2.sam2_image_predictor import SAM2ImagePredictor
-from console import Console
 
 pwd = os.path.dirname(os.path.abspath(__file__))
-def get_checkpoint_path(model_name="sam2.1_hiera_large"):
+
+
+def get_checkpoint_path(model_name: str = "sam2.1_hiera_large") -> str:
+    """Return the absolute path to a SAM2 checkpoint file for the given model name."""
     return os.path.join(pwd, "checkpoints", model_name + ".pt")
-def get_model_cfg_path(config_name="sam2.1_hiera_l"):
+
+
+def get_model_cfg_path(config_name: str = "sam2.1_hiera_l") -> str:
+    """Return the absolute path to a SAM2 config YAML for the given config name."""
     return os.path.join(pwd, "sam2", "configs", "sam2.1", config_name + ".yaml")
 
-def show_mask(mask, ax, random_color=False, borders = True):
+def show_mask(mask: np.ndarray, ax: Any, random_color: bool = False, borders: bool = True) -> None:
+    """Overlay a mask on a Matplotlib axis, optionally with borders."""
+    if plt is None:
+        raise ImportError("matplotlib is required for show_mask() but is not installed.")
     if random_color:
         color = np.concatenate([np.random.random(3), np.array([0.6])], axis=0)
     else:
@@ -24,24 +41,43 @@ def show_mask(mask, ax, random_color=False, borders = True):
     mask = mask.astype(np.uint8)
     mask_image =  mask.reshape(h, w, 1) * color.reshape(1, 1, -1)
     if borders:
+        if cv2 is None:
+            raise ImportError("opencv-python is required for drawing borders but is not installed.")
         contours, _ = cv2.findContours(mask,cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE) 
         # Try to smooth contours
         contours = [cv2.approxPolyDP(contour, epsilon=0.01, closed=True) for contour in contours]
         mask_image = cv2.drawContours(mask_image, contours, -1, (1, 1, 1, 0.5), thickness=2) 
     ax.imshow(mask_image)
 
-def show_points(coords, labels, ax, marker_size=375):
+def show_points(coords: np.ndarray, labels: np.ndarray, ax: Any, marker_size: int = 375) -> None:
+    """Plot positive and negative points on a Matplotlib axis."""
+    if plt is None:
+        raise ImportError("matplotlib is required for show_points() but is not installed.")
     pos_points = coords[labels==1]
     neg_points = coords[labels==0]
     ax.scatter(pos_points[:, 0], pos_points[:, 1], color='green', marker='*', s=marker_size, edgecolor='white', linewidth=1.25)
     ax.scatter(neg_points[:, 0], neg_points[:, 1], color='red', marker='*', s=marker_size, edgecolor='white', linewidth=1.25)   
 
-def show_box(box, ax):
+def show_box(box: Sequence[int], ax: Any) -> None:
+    """Draw a bounding box given [x0, y0, x1, y1] on a Matplotlib axis."""
+    if plt is None:
+        raise ImportError("matplotlib is required for show_box() but is not installed.")
     x0, y0 = box[0], box[1]
     w, h = box[2] - box[0], box[3] - box[1]
     ax.add_patch(plt.Rectangle((x0, y0), w, h, edgecolor='green', facecolor=(0, 0, 0, 0), lw=2))
 
-def show_masks(image, masks, scores, point_coords=None, box_coords=None, input_labels=None, borders=True):
+def show_masks(
+    image: np.ndarray,
+    masks: np.ndarray,
+    scores: np.ndarray,
+    point_coords: Optional[np.ndarray] = None,
+    box_coords: Optional[Sequence[int]] = None,
+    input_labels: Optional[np.ndarray] = None,
+    borders: bool = True,
+) -> None:
+    """Visualize masks and optional prompts on the provided image."""
+    if plt is None:
+        raise ImportError("matplotlib is required for show_masks() but is not installed.")
     for i, (mask, score) in enumerate(zip(masks, scores)):
         plt.figure(figsize=(10, 10))
         plt.imshow(image)
@@ -57,39 +93,68 @@ def show_masks(image, masks, scores, point_coords=None, box_coords=None, input_l
         plt.axis('off')
         plt.show()
         
-def show_plot_image(image):
+def show_plot_image(image: Image.Image) -> None:
+    """Display a PIL image using Matplotlib without axes."""
+    if plt is None:
+        raise ImportError("matplotlib is required for show_plot_image() but is not installed.")
     plt.figure(figsize=(10, 10))
     plt.imshow(image)
     plt.axis('off')
     plt.show()
     
 
-def predict_sam2(image: Image.Image, sam2_model, mask_threshold=0.05, show:bool = False):
-    image = np.array(image.convert("RGB"))
-    predictor = SAM2ImagePredictor(sam2_model)
-    predictor.set_image(image)
+def _combine_masks_to_alpha(masks: np.ndarray) -> np.ndarray:
+    """Combine a stack of boolean masks into a single 0/255 uint8 alpha mask."""
+    # Equivalent to iterative logical_or but vectorized
+    combined = np.any(masks, axis=0)
+    return combined.astype(np.uint8) * 255
 
-    # get the point in the center of the image
-    h, w = image.shape[:2]
+
+def predict_sam2(
+    image: Image.Image,
+    sam2_model: Any,
+    mask_threshold: float = 0.05,
+    show: bool = False,
+) -> Image.Image:
+    """Run SAM2 predictor on an image and return an RGBA image with background whitened.
+
+    Args:
+        image: PIL image to process.
+        sam2_model: Initialized SAM2 model instance.
+        mask_threshold: Fraction of the shorter image side used to sample additional points.
+        show: If True, display the resulting image with Matplotlib.
+    Returns:
+        An RGBA PIL Image where non-masked areas are white.
+    """
+    # Convert input PIL image to a 3-channel RGB numpy array (H, W, 3)
+    image_np = np.array(image.convert("RGB"))
+    # Initialize the SAM2 predictor and bind the image
+    predictor = SAM2ImagePredictor(sam2_model)
+    predictor.set_image(image_np)
+
+    # Seed with a single positive point at the image center
+    h, w = image_np.shape[:2]
     point_coords = np.array([[w // 2, h // 2]])
     input_labels = np.array([1])
 
+    # First pass: request multiple candidate masks and their scores/logits
     masks, scores, logits = predictor.predict(
         point_coords=point_coords,
         point_labels=input_labels,
         multimask_output=True,
     )
+    # Sort candidates by confidence (descending) and reorder outputs
     sorted_ind = np.argsort(scores)[::-1]
     masks = masks[sorted_ind]
     scores = scores[sorted_ind]
     logits = logits[sorted_ind]
     
-    h, w = image.shape[:2]
+    # Define additional positive points around the center for refinement
     m = int(min(w, h) * mask_threshold)
     point_coords = np.array([[w//2, h//2], [w+m, h+m], [w-m, h+m]])
-    # input_labels
     input_labels = np.array([1, 1, 1])
 
+    # Use the top candidate's logits as a prior and refine to a single mask
     mask_input = logits[np.argmax(scores), :, :]
     masks, scores, _ = predictor.predict(
         point_coords=point_coords,
@@ -98,20 +163,14 @@ def predict_sam2(image: Image.Image, sam2_model, mask_threshold=0.05, show:bool 
         multimask_output=False,
     )
 
-    # show_masks(image, masks, scores, point_coords=point_coords, input_labels=input_labels, borders=True)
-    
-    combined_mask = np.zeros_like(masks[0])
-    for mask in masks:
-        combined_mask = np.logical_or(combined_mask, mask)
-    # remove non-masked areas as transparent
-    combined_mask = combined_mask.astype(np.uint8) * 255
-    # crop white areas from mask into the image, so what's black is not displayed
-    image_with_mask = image.copy()
+    # Merge mask(s) into a single alpha mask and whiten background pixels
+    combined_mask = _combine_masks_to_alpha(masks)
+    image_with_mask = image_np.copy()
     image_with_mask[combined_mask == 0] = 255
     image_with_mask = Image.fromarray(image_with_mask)
-    # to image
     image_with_mask = image_with_mask.convert("RGBA")
 
+    # Optionally display the result
     if show:
         show_plot_image(image_with_mask)
     
