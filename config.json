@@ -1,0 +1,9 @@
+{
+    "prefixes": ["an athlete man", "a man",
+    "an athlete woman", "a woman",
+    "an athlete child", "an athlete person", "an athlete",
+    "an athlete playing", "an athlete matching", "an athlete",
+    "playing", "matching", "aiming", "throwing"],
+    "items": ["air hockey", "ampute football", "archery", "arm wrestling", "axe throwing", "balance beam", "barell racing", "baseball", "basketball", "baton twirling", "bike polo", "billiards", "bmx", "bobsled", "bowling", "boxing", "bull riding", "bungee jumping"],
+    "postfixes": ["running a lot", "battling fiercely", "in action", "in a game", "during a match", "in a competition", "in a tournament", "in a sport", "in a league", "in a championship"]
+}
