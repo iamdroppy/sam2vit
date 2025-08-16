@@ -315,4 +315,3 @@ Or, some other examples:
 - Project page: https://github.com/iamdroppy/sam2vit  
 - SAM 2: https://github.com/facebookresearch/sam2/  
 - CLIP: https://github.com/openai/CLIP  
-- License: [PLACEHOLDER] (add your project’s license)
