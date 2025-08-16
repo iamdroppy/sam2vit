@@ -205,9 +205,9 @@ if __name__ == "__main__":
     
     arg_parsed = argparse.ArgumentParser(description="Run SAM2 with CLIP for image segmentation and classification.")
     arg_parsed.add_argument("--sam-model", "-s", default=default_sam_model_name, type=str, help="SAM2 model name (default: sam2.1_hiera_large)")
-    arg_parsed.add_argument("--sam-config", "-c", default=default_sam_config_name, type=str, help="SAM2 config name (default: sam2.1_hiera_l)")
+    arg_parsed.add_argument("--sam-config", "-l", default=default_sam_config_name, type=str, help="SAM2 config name (default: sam2.1_hiera_l)")
     arg_parsed.add_argument("--no-sam", "-x", default=False, action="store_true", help="Disables the Segmentation")
-    arg_parsed.add_argument("--clip-model", "-m", default=default_clip_model_name, type=str, help="CLIP model name (default: ViT-L/14@336px)")
+    arg_parsed.add_argument("--clip-model", "-c", default=default_clip_model_name, type=str, help="CLIP model name (default: ViT-L/14@336px)")
     arg_parsed.add_argument("--seed", "-S", default=default_seed, type=int, help="Random seed for reproducibility (default: 3)")
     arg_parsed.add_argument("--dataset-dir", "-i", required=True, type=str, help="Path to the dataset directory (default: dataset_cars)")
     arg_parsed.add_argument("--output-dir", "-o", default="output", type=str, help="Path to the output directory (default: output)")
