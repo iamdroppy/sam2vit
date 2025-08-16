@@ -1,15 +1,18 @@
 # sam2vit
 
-**What is it?** 
+## What is it?
 
-Easily accurate datasets!
+Highly precise and reliable datasets.
 
-**SAM2 Center-Focus Background Removal + CLIP**
+## SAM2 Center-Focus Background Removal + CLIP
 
 This project segments the central subject of each image using SAM 2, removes the background, and classifies the vehicle's color using CLIP with a structured prompt workflow. Prompts are built from prefix prompts + color names + postfix prompts, merged into a single array, scored by CLIP, and the resulting images are reorganized into color-named folders.
 
-**It uses cars to validate from https://www.kaggle.com/datasets/kshitij192/cars-image-dataset
-
+**Case scenario dataset:** https://www.kaggle.com/datasets/kshitij192/cars-image-dataset
+## TODO List
+ - [x] Input Image --> SAM2 --> Get the `|prefix|x|item|x|postfix|` (**built prompt**) --> CLIP
+ - [ ] Use `yolo` *(or another object detection algorithm)* to obtain the focal point better
+ - [ ] Remove the back project (SAM2) and use requirements instead
 
 ### Features:
 
