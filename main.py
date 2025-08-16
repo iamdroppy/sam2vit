@@ -54,6 +54,8 @@ def get_item_from_list(prompt: str) -> Optional[str]:
             return item
     return None
 
+# This table is used to display results in a structured format
+# at the end of processing
 table = RichTable(title="SAM2 with CLIP Results", show_lines=True, show_header=True)
 table.add_column("Status", style="")
 table.add_column("Item", style="bold")
@@ -95,6 +97,8 @@ def main(args: argparse.Namespace):
 
     # Load Models
     Console.clip(f"🔃 [grey]Loading [bold]CLIP[/bold] model:[/grey] [bold]{clip_model_name}[/bold] on device: [bold]{device_clip.type}[/bold]")
+    if clip_model_name == "ViT-L/14@336px":
+        Console.warning("Using default CLIP model [bold]ViT-L/14@336px[/bold], [red]which is heavy on memory[/red]. Consider using a smaller model for better performance.")
     clip_model = ClipModel(clip_model_name, device_clip)
     sam2_model = None
     if args.no_sam:
@@ -284,6 +288,5 @@ if __name__ == "__main__":
     Console.success(f"📸 [bold green]Images per second:[/bold green] {images_per_second:.2f} images/sec")
     Console.success(f"📂 [bold green]Images OK:[/bold green] {result['processed_images']}")
     Console.success(f"📂 [bold green]Output directory:[/bold green] {args.output_dir}")
-    # close stream if not None
     if stream and not stream.closed:
         stream.close()
