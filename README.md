@@ -11,6 +11,7 @@ This project segments the central subject of each image using SAM 2, removes the
 **Case scenario dataset:** https://www.kaggle.com/datasets/kshitij192/cars-image-dataset
 ## TODO List
  - [x] Input Image --> SAM2 --> Get the `|prefix|x|item|x|postfix|` (**built prompt**) --> CLIP
+ - [x] Prefix, items, and postfix to be `strip()` - spaces are added in-code  
  - [ ] Use `yolo` *(or another object detection algorithm)* to obtain the focal point better
  - [ ] Remove the back project (SAM2) and use requirements instead
 
@@ -272,15 +273,6 @@ Notes on background handling and transparency: the output is RGBA, but the backg
 
 This pipeline is not limited to cars. The SAM 2 focalization step is class-agnostic and simply prioritizes the center of the frame; CLIP classifies color from text prompts you define. To repurpose the project for other object categories (e.g., apparel, footwear, furniture, food), adapt three things:
 
-- Input folder: replace dataset_cars with your dataset directory.
-- Prompt components: swap in domain-appropriate prefixes and postfixes, keeping the color list relevant to your objects.
-- Color extraction rule: the code extracts the color by searching for " {color} " inside the winning prompt. Keep color tokens lowercase and ensure your prefix/postfix strings preserve a literal space on both sides of the color.
-
-Technical guidelines:
-- Prefixes should typically end with a trailing space, and postfixes should begin with a leading space so the composed prompt contains “ {color} ” (space-delimited). This ensures get_color() can find the color reliably.
-- Avoid punctuation immediately adjacent to the color token (e.g., “ red,”) if you rely on the default get_color(). Consider making get_color() case-insensitive or tokenizing if you need more flexibility.
-- Multi-word items (e.g., "space gray", "rose gold") work as long as you preserve surrounding spaces in the composed prompt.
-
 Example domain presets
 
 | Domain | Example items (lowercase) | Example prefixes (end with space) | Example postfixes (start with space) |
@@ -291,7 +283,7 @@ Example domain presets
 | Consumer electronics | black, silver, space gray, rose gold, midnight, starlight | "a ", "a device in ", "a phone that is ", "a laptop finished in " | " device", " phone", " laptop", " product" |
 | Fruits/produce | red, green, yellow, golden, purple, orange | "a ", "a ripe ", "a fresh ", "a photo of a " | " apple", " banana", " mango", " grape" |
 
-Concrete, ready-to-use lists
+Or, some other examples:
 
 - Apparel
   - Items:
