@@ -18,7 +18,7 @@ from console import Console
 from sam_utilities import predict_sam2, get_checkpoint_path, get_model_cfg_path
 from clip_utilities import ClipModel
 from sam2.build_sam import build_sam2
-# from sam2.sam2_image_predictor import SAM2ImagePredictor  # unused import
+from sam2.sam2_image_predictor import SAM2ImagePredictor
 
 def get_prompts() -> List[str]:
     """
@@ -61,7 +61,7 @@ table.add_column("Prompt", style="black bold")
 table.add_column("Probability", style="green")
 table.add_column("File Name", style="dim")
 
-def main(args: argparse.Namespace) -> Dict[str, int]:
+def main(args: argparse.Namespace):
     """
     Initializes the main function for the script.
     This function sets up the environment, checks the device, loads models, and processes images.
@@ -133,7 +133,7 @@ def process(args: argparse.Namespace, clip_model: ClipModel, sam2_model) -> Dict
     _postfixes = config.get("postfixes", ["there"])
 
     prompt_list = get_prompts()
-    prompts = prompt_list  # no need to copy
+    prompts = [prompt for prompt in prompt_list]
     Console.debug(f"⭕ [rosy_brown]Generated prompts: [bold]{len(prompts)}[/bold][rosy_brown] prompts[/rosy_brown]")
     Console.debug(f"🔍 [rosy_brown]2 Sample prompts: [bold]{', '.join(prompts[:2])}[/bold][rosy_brown]...[/rosy_brown]")
     Console.debug(f"🔃 [rosy_brown]Processing images[/rosy_brown] in [rosy_brown][bold]{args.dataset_dir}[/bold][/rosy_brown] 📂 [yellow]folder[/yellow]...")
