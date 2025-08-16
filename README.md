@@ -1,6 +1,6 @@
 # sam2vit
 
-Center-focused background removal with SAM 2 and prompt-based classification with CLIP.
+*Center-focused* background removal with SAM 2 and prompt-based classification with CLIP.
 
 This project segments the primary subject near the image center using SAM 2, paints the background white, then classifies each image using OpenAI CLIP with a structured prompt set. Images are saved to output subfolders named after the predicted class/item.
 
@@ -75,7 +75,7 @@ Defaults worth noting:
 ## Customization
 
 - Change `items`, `prefixes`, and `postfixes` in `config.json` to adapt to other domains (e.g., apparel, furniture, produce).
-- Switch to a smaller CLIP model (e.g., `ViT-B/32`) for speed.
+- Switch to a smaller CLIP model via `--clip-model` (or `-c`): e.g., `ViT-B/32`) for speed.
 - Adjust `mask_threshold` (in `main.py` call to `predict_sam2`) to widen/tighten the focal region.
 - Modify `predict_sam2()` to place different points or to write the mask into the alpha channel for true transparency.
 
@@ -83,7 +83,7 @@ Defaults worth noting:
 
 Image characteristics
 - Very small images: the margin-based refinement can collapse to overlapping points; consider lowering `mask_threshold` or skipping refinement.
-- Extremely large images: may cause OOM on limited GPUs; resize inputs or switch to a smaller CLIP model.
+- Extremely large images: may cause OOM on limited GPUs; resize inputs or switch to a smaller CLIP model via `--clip-model` (or `-c`).
 - Non-RGB inputs (grayscale/CMYK): converted to RGB internally; colors may shift slightly.
 - Low contrast foreground/background: SAM 2 may segment poorly; we should adjust margin or provide custom prompts/points.
 
@@ -131,7 +131,6 @@ Operational scenarios
 - `sam_utilities.py` — SAM 2 helpers (`predict_sam2`)
 - `sam2/` — SAM 2 package and configs (`sam2/configs/sam2.1/`)
 - `checkpoints/` — SAM 2 checkpoints (e.g., `sam2.1_hiera_large.pt`)
-- `output/` — results organized by predicted item
 
 ## Roadmap
 
@@ -149,6 +148,7 @@ Planned
 - [ ] Optional object detector (e.g., YOLO) to set focal points adaptively
 - [ ] Pluggable background handling (white vs. true transparency)
 - [ ] Configurable prompt templates and tokenization limits
+- [ ] Central position may be changed in the future as it's hardcoded.
 
 ## Acknowledgements
 
