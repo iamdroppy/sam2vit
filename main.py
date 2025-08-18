@@ -10,7 +10,6 @@ from typing import List, Optional, Dict, Any
 import numpy as np
 import torch
 from PIL import Image
-from rich import print as rich_print
 from rich.table import Table as RichTable
 from rich import console as rich_console
 
@@ -18,8 +17,6 @@ from cuda_device import device_check
 from loguru import logger
 from clip_model import ClipModel
 from sam_model import SamModel
-from sam2.build_sam import build_sam2
-from sam2.sam2_image_predictor import SAM2ImagePredictor
 
 from config import Config, load_config
 
@@ -66,7 +63,7 @@ def main(args: argparse.Namespace):
         logger.warning(f"Skipping SAM2 model: {sam_model_name} with config: {sam_config_name} on device: {device.type}")
     else:
         logger.info(f"Loading SAM2 model: {sam_model_name} with config: {sam_config_name} on device: {device.type}")
-        sam2_model = SamModel(build_sam2(args, device=device))
+        sam2_model = SamModel()
 
     return process(args, clip_model, sam2_model, config)
 
@@ -275,5 +272,5 @@ if __name__ == "__main__":
     logger.success(f"Total processing time: {elapsed_time_to_string(elapsed_time)}")
     images_per_second = result["processed_images"] / elapsed_time if elapsed_time > 0 else 0
     logger.success(f"Images per second: {images_per_second:.2f} images/sec")
-    logger.success(f"Images OK: {result['processed_images']}")
+    logger.success(f"Images processed: {result['processed_images']}")
     logger.success(f"Output directory: {args.output_dir}")

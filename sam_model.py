@@ -29,9 +29,9 @@ class SamModel:
     def __get_model_cfg_path(self, config_name: str) -> str:
         return os.path.join(self.pwd, "sam2", "configs", "sam2.1", config_name + ".yaml")
     
-    def show_masks(self, mask: np.ndarray, ax: Any, random_color: bool = False, borders: bool = True) -> None:
+    def show_mask(self, mask: np.ndarray, ax: Any, random_color: bool = False, borders: bool = True) -> None:
         if plt is None:
-                raise ImportError("matplotlib is required for show_mask() but is not installed.")
+            raise ImportError("matplotlib is required for show_mask() but is not installed.")
         if random_color:
             color = np.concatenate([np.random.random(3), np.array([0.6])], axis=0)
         else:
