@@ -8,7 +8,7 @@ __pycache__/
 build/*
 _C.*
 outputs/*
-checkpoints/*.pt
+checkpoints/*
 demo/backend/checkpoints/*.pt
 
 *.pt

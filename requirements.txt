@@ -55,3 +55,4 @@ traitlets==5.14.3
 typing_extensions==4.12.2
 wcwidth==0.2.13
 wheel==0.45.1
+loguru==0.7.3

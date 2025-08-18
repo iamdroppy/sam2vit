@@ -1,6 +1,7 @@
 import os
 # if using Apple MPS, fall back to CPU for unsupported ops
 os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
+import sys
 import json
 import time
 import argparse
@@ -9,53 +10,22 @@ from typing import List, Optional, Dict, Any
 import numpy as np
 import torch
 from PIL import Image
-from rich import print
+from rich import print as rich_print
 from rich.table import Table as RichTable
 from rich import console as rich_console
 
 from cuda_device import device_check
-from console import Console
-from sam_utilities import predict_sam2, get_checkpoint_path, get_model_cfg_path
-from clip_utilities import ClipModel
+from loguru import logger
+from sam_model import predict_sam2, get_checkpoint_path, get_model_cfg_path
+from clip_model import ClipModel
+from sam_model import SamModel
 from sam2.build_sam import build_sam2
 from sam2.sam2_image_predictor import SAM2ImagePredictor
 
-def get_prompts() -> List[str]:
-    """
-    Generate a list of prompt strings by combining each item with every prefix and postfix.
+from config import Config, load_config
 
-    Returns:
-        List[str]: All combinations of prefix + item + postfix.
-    """
-    prompts: List[str] = []
-    for item in _items:
-        for prefix in _prefixes:
-            for postfix in _postfixes:
-                prompts.append(f"{prefix.strip()} {item.strip()} {postfix.strip()}")
-                
-    with open(".prompts.log", "w") as f:
-        f.write("\n".join(prompts))
-        
-    return prompts
- 
-_items: List[str] = []
-_prefixes: List[str] = []
-_postfixes: List[str] = []
+_LOG_LEVEL_MAP = {"TRACE": 0, "DEBUG": 10, "INFO": 20, "WARNING": 30, "ERROR": 40, "CRITICAL": 50}
 
-def get_item_from_list(prompt: str) -> Optional[str]:
-    """
-    Extracts the first item from a prompt string.
-    Args:
-        prompt (str): 
-            A string that may contain an item name.
-    """
-    for item in _items:
-        if " " + item + " " in prompt:
-            return item
-    return None
-
-# This table is used to display results in a structured format
-# at the end of processing
 table = RichTable(title="SAM2 with CLIP Results", show_lines=True, show_header=True)
 table.add_column("Status", style="")
 table.add_column("Item", style="bold")
@@ -69,17 +39,12 @@ def main(args: argparse.Namespace):
     This function sets up the environment, checks the device, loads models, and processes images.
     Passing the `--debug` or `-d` argument enables debug mode, which provides additional logging information.
     """
-    if "--debug" in os.sys.argv or "-d" in os.sys.argv:
-        Console.is_debug = True
-        Console.debug("Debug mode is enabled.")
-    else:
-        Console.info("Debug mode is off. Use --debug or -d to enable it.")
-
-    device_clip = torch.device("cuda" if torch.cuda.is_available() or args.force_device == "cuda" else "cpu")
-    device = torch.device("mps" if torch.backends.mps.is_available() or args.force_device == "mps" else "cuda" if torch.cuda.is_available() or args.force_device == "cuda" else "cpu")
-    
-    if (args.force_device):
-        Console.warning(f"Using forced device: [red]{args.force_device}[/red]")
+    config = load_config("config.json")
+    if not config:
+        logger.critical("Failed to load configuration from config.json. Exiting.")
+        exit(ExitCodes.MISSING_CONFIG)
+    device_clip = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu")
 
     sam_model_name = args.sam_model if args.sam_model else "sam2.1_hiera_large"
     sam_config_name = args.sam_config if args.sam_config else "sam2.1_hiera_l"
@@ -87,40 +52,31 @@ def main(args: argparse.Namespace):
     seed = args.seed if args.seed else 3
 
     device_check(device, device_clip)
-    Console.info(f"[red][bold]Using device:[/bold][/red] [bold]{device.type}[/bold] for ✏️ SAM2 and [bold]{device_clip.type}[/bold] for 🔗 CLIP")
+    logger.info(f"Using device: `{device.type}` for ✏️ SAM2 and `{device_clip.type}` for CLIP")
 
     sam2_checkpoint = get_checkpoint_path(sam_model_name)
     model_cfg = get_model_cfg_path(sam_config_name)
 
-    Console.success(f"🌱 [green]Setting seed:[/green] [bold green]{seed}[/bold green]")
+    logger.success(f"🌱 Seed: {args.seed}")
     np.random.seed(seed)
 
     # Load Models
-    Console.clip(f"🔃 [grey]Loading [bold]CLIP[/bold] model:[/grey] [bold]{clip_model_name}[/bold] on device: [bold]{device_clip.type}[/bold]")
+    logger.info(f"Loading CLIP model: {clip_model_name} on device: {device_clip.type}")
     if clip_model_name == "ViT-L/14@336px":
-        Console.warning("Using default CLIP model [bold]ViT-L/14@336px[/bold], [red]which is heavy on memory[/red]. Consider using a smaller model for better performance.")
+        logger.warning("Using default CLIP model ViT-L/14@336px, which is heavy on memory. Consider using a smaller model for better performance.")
     clip_model = ClipModel(clip_model_name, device_clip)
     sam2_model = None
     if args.no_sam:
-        Console.warning(f"🔃 [yellow]Skipping [/yellow][red]SAM2[/red] [yellow]model:[/yellow] [bold]{sam_model_name}[/bold]")
+        logger.warning(f"Skipping SAM2 model: {sam_model_name} with config: {sam_config_name} on device: {device.type}")
     else:
-        Console.sam2(f"🔃 Loading SAM2 model: [bold]{sam_model_name}[/bold] with config: [bold]{sam_config_name}[/bold] on device: [bold rosy_brown]{device.type}[/bold][/rosy_brown]")
-        sam2_model = build_sam2(model_cfg, sam2_checkpoint, device=device)
+        logger.info(f"Loading SAM2 model: {sam_model_name} with config: {sam_config_name} on device: {device.type}")
+        sam2_model = SamModel(build_sam2(model_cfg, sam2_checkpoint, device=device))
 
-    return process(args, clip_model, sam2_model)
+    return process(args, clip_model, sam2_model, config)
 
-def load_config(file_path: str) -> Dict[str, Any]:
-    """
-    Loads the configuration from a JSON file.
-    Args:
-        file_path (str): The path to the JSON configuration file.
-    Returns:
-    Dict[str, Any]: The loaded configuration as a dictionary.
-    """
-    with open(file_path, "r") as f:
-        return json.load(f)
 
-def process(args: argparse.Namespace, clip_model: ClipModel, sam2_model) -> Dict[str, int]:
+
+def process(args: argparse.Namespace, clip_model: ClipModel, sam2_model: SamModel, config: Config) -> Dict[str, int]:
     """
     Processes images in the '--dataset-dir' directory using the SAM2 model for segmentation and CLIP model for classification.
     Outputs segmented images to the '--output-dir' directory, organized by identified item categories using the CLIP and SAM2 models.
@@ -130,27 +86,35 @@ def process(args: argparse.Namespace, clip_model: ClipModel, sam2_model) -> Dict
         sam2_model: The SAM2 model used for image segmentation.
     """
     # Load configuration from config.json
-    config = load_config("config.json")
     global _prefixes, _items, _postfixes
-    _prefixes = config.get("prefixes", ["an"])
-    _items = config.get("items", ["object"])
-    _postfixes = config.get("postfixes", ["there"])
+    
+    _prefixes = config.prefixes
+    _items = config.items
+    _postfixes = config.postfixes
 
-    prompt_list = get_prompts()
+    prompt_list = config.get_prompts()
     prompts = [prompt for prompt in prompt_list]
-    Console.debug(f"⭕ [rosy_brown]Generated prompts: [bold]{len(prompts)}[/bold][rosy_brown] prompts[/rosy_brown]")
-    Console.debug(f"🔍 [rosy_brown]2 Sample prompts: [bold]{', '.join(prompts[:2])}[/bold][rosy_brown]...[/rosy_brown]")
-    Console.debug(f"🔃 [rosy_brown]Processing images[/rosy_brown] in [rosy_brown][bold]{args.dataset_dir}[/bold][/rosy_brown] 📂 [yellow]folder[/yellow]...")
-
+    logger.debug(f"Generated {len(prompts)} prompts from config.")
+    logger.trace(f"10 Random Sample prompts: {', '.join(np.random.choice(prompts, 10))}")
+    logger.info(f"Processing images in {args.dataset_dir} 📂 folder...")
+    
     i = 0
     errors = 0
-    for file in os.listdir(args.dataset_dir):
+    success = 0
+    files = os.listdir(args.dataset_dir)
+    if not files or files == []:
+        logger.critical(f"No files found in directory: {args.dataset_dir}")
+        exit(ExitCodes.NO_INPUT_FILES)
+    wrong_ext_advised = False
+    for file in files:
         try:
             i += 1
             if not file.lower().endswith(('.png', '.jpg', '.jpeg')):
-                Console.debug(f"[red]Skipping [bold]non-image[/bold] file[/red]: [bold]{args.dataset_dir}/{file}[/bold] - [bold underline]Only .png, .jpg, and .jpeg files are processed.[/bold underline]")
+                if not wrong_ext_advised:
+                    logger.warning(f"Skipping non-image file: `{file}`: Only .png, .jpg, and .jpeg files are processed. This message will only be shown once.")
+                    wrong_ext_advised = True
                 continue
-            Console.debug(f"🔄 Processing file: [bold]{file}[/bold]")
+            logger.debug(f"Processing image: {file}")
             img_path = os.path.join(args.dataset_dir, file)
             img = Image.open(img_path)
             if not args.no_sam:
@@ -158,47 +122,56 @@ def process(args: argparse.Namespace, clip_model: ClipModel, sam2_model) -> Dict
                     img, sam2_model, mask_threshold=0.05, show=False
                 )
                 if segmented_image is None:
-                    Console.error(f"Failed to segmentate image: [bold]{file}[/bold]")
+                    logger.error(f"Failed to segmentate image: {file}")
                     continue
-                Console.debug(f"Processed image: [bold]{file}[/bold]")
+                logger.debug(f"Processed image: {file}")
             else:
-                Console.debug(f"⚠️ [yellow]Skipping SAM2 segmentation for image: [bold]{file}[/bold][/yellow]")
+                logger.debug(f"Skipping SAM2 segmentation for image: {file}")
                 segmented_image = img
                 
 
             clip_result = clip_model.process(segmented_image, prompts)
             prompt = clip_result['prompt']
             probability = clip_result['probability_percentage']
-            item = get_item_from_list(prompt)
+            item = config.get_item_from_list(prompt)
 
-            Console.debug(
-                f"[bold underline]{item.capitalize() if item else 'Unknown'}[/bold underline] "
-                f"[light_green]`[/light_green][grey]{prompt}[/grey][light_green]`[/light_green] "
-                f"[orange3]{probability:.2f}[/orange3][light_pink3]%[/light_pink3]"
-            )
+            logger.debug(f"{item.capitalize() if item else 'Unknown'} `{prompt}` {probability:4f}%")
 
             if item in _items:
-                os.makedirs(os.path.join(args.output_dir, item), exist_ok=True)
-                output_path = os.path.join(args.output_dir, item, file.replace(".jpg", ".png"))
-                segmented_image.save(output_path)
-                Console.debug(f"Saved image to: [bold]{output_path}[/bold]")
-                Console.success(
-                    f"🗃️ [bold]{file}[/bold] [chartreuse2]{item}[/chartreuse2] from [bold]{prompt}[/bold]"
-                )
+                if (config.yolo.enabled):
+                    os.makedirs(os.path.join(args.output_dir, item), exist_ok=True)
+                    output_path = os.path.join(args.output_dir, item, file.replace(".jpg", ".png"))
+                    segmented_image.save(output_path)
+                    success += 1
             else:
-                Console.warning(
-                    f"Can't find prompt in [bold]{file}[/bold] with prompt: [bold]{prompt}[/bold]"
-                )
+                logger.warning(f"Can't find prompt in {file} with prompt: {prompt}")
                 errors += 1
         except Exception as e:
-            Console.error(f"Error processing file [bold]{file}[/bold]: {e}")
+            logger.error(f"Error processing file {file}: {e}")
             errors += 1
-    Console.debug(f"🔚 Processed {i} files with {errors} errors.")
+    if success == 0 and errors >= 0:
+        logger.critical(f"No images were processed (with {errors}). Please check the input directory.")
+    elif success == 0 and errors >= 0:
+        logger.error(f"There are {errors} in {i} files (no success).")
+        
+    logger.trace(f"Processed {i} files with {success} succeeded and {errors} errors.")
+    if success > errors:
+        ratio = success / errors
+        logger.success(f"Finished process: Success/Error ratio: {ratio:.2f} in {i} files")
+    elif errors > success:
+        ratio = errors / success
+        logger.warning(f"Finished process: Error/Success ratio: {ratio:.2f} in {i} files")
     return {
         "processed_files": i,
         "errors": errors,
         "processed_images": i - errors
     }
+    
+class ExitCodes:
+    SUCCESS = 0
+    INVALID_LOG_LEVEL = -13
+    NO_INPUT_FILES = -41,
+    MISSING_CONFIG = -55
 
 if __name__ == "__main__":
     
@@ -208,55 +181,76 @@ if __name__ == "__main__":
     default_seed = 3
     
     arg_parsed = argparse.ArgumentParser(description="Run SAM2 with CLIP for image segmentation and classification.")
-    arg_parsed.add_argument("--sam-model", "-s", default=default_sam_model_name, type=str, help="SAM2 model name (default: sam2.1_hiera_large)")
-    arg_parsed.add_argument("--sam-config", "-l", default=default_sam_config_name, type=str, help="SAM2 config name (default: sam2.1_hiera_l)")
-    arg_parsed.add_argument("--no-sam", "-x", default=False, action="store_true", help="Disables the Segmentation")
-    arg_parsed.add_argument("--clip-model", "-c", default=default_clip_model_name, type=str, help="CLIP model name (default: ViT-L/14@336px)")
-    arg_parsed.add_argument("--seed", "-S", default=default_seed, type=int, help="Random seed for reproducibility (default: 3)")
-    arg_parsed.add_argument("--dataset-dir", "-i", required=True, type=str, help="Path to the dataset directory (default: dataset_cars)")
-    arg_parsed.add_argument("--output-dir", "-o", default="output", type=str, help="Path to the output directory (default: output)")
-    arg_parsed.add_argument("--no-log", "-n", action="store_true", default=False,help="Disable logging to main.log")
-    arg_parsed.add_argument("--debug", '-d', action="store_true", default=False, help="Enable debug mode for additional logging")
-    arg_parsed.add_argument("--verbose", "-v", action="store_true", default=False, help="Enable verbose mode (sets debug mode)")
-    arg_parsed.add_argument("--show-image", "-g", action="store_true", default=False, help="Show the output image after each processing step")
-    arg_parsed.add_argument("--force-device", "-f", default=False, type=str, help="Force the use of a specific device (cuda, cpu)")
-    arg_parsed.add_argument("--log", '-l', type=str, default="sam2vit.log", help="Log file path (default: sam2vit.log)")
-    args = arg_parsed.parse_args()
     
+    # defaults
+    # SAM2
+    arg_parsed.add_argument("--no-sam", "-x", default=False, action="store_true", help="Disables the Segmentation")
+    arg_parsed.add_argument("--sam-model", default=default_sam_model_name, type=str, help="SAM2 model name (default: sam2.1_hiera_large)")
+    arg_parsed.add_argument("--sam-config", default=default_sam_config_name, type=str, help="SAM2 config name (default: sam2.1_hiera_l)")
+    # CLIP
+    arg_parsed.add_argument("--clip-model", "-c", default=default_clip_model_name, type=str, help="CLIP model name (default: ViT-L/14@336px)")
+    
+    arg_parsed.add_argument("--use-yolo-model", "-y", default=False, action="store_true", help="Use YOLO model for object detection")
+    # np
+    arg_parsed.add_argument("--seed", "-S", default=default_seed, type=int, help="Random seed for reproducibility (default: 3)")
+    arg_parsed.add_argument("--show-image", "-g", action="store_true", default=False, help="Show the output image after each processing step")
+    
+    # io
+    arg_parsed.add_argument("--input-dir", "-i", default="_input", type=str, required=True, help="Path to the dataset directory (default: _input)")
+    arg_parsed.add_argument("--output-dir", "-o", default="_output", type=str, required=True, help="Path to the output directory (default: _output)")
+
+    # logs
+    arg_parsed.add_argument("--log-level", "-l", type=str, default="INFO", choices=["WORK", "TRACE", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"], help="Sets the log level")
+    arg_parsed.add_argument("--file-log-level", "-p", type=str, default="TRACE", choices=["TRACE", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"], help="Sets the log level of `app.log` file (default: trace)")
+    arg_parsed.add_argument("--file-log-name", "-n", type=str, default="app.log", help="Sets the log file name (default: app.log)")
+    arg_parsed.add_argument("--file-log-rotation", "-r", type=str, default="100 MB", help="Sets the log file rotation size (default: 100 MB)")
+    arg_parsed.add_argument("--seed", "-s", default=3, type=int, help="Random seed for reproducibility (default: 3)")
+    args = arg_parsed.parse_args()
+
+    logger.remove()
+    logger.add(sys.stderr, level=args.log_level.upper())
+    logger.add(args.file_log_name if args.file_log_name else "app.log", level=args.file_log_level.upper(), rotation=args.file_log_rotation if args.file_log_rotation else "50 MB", enqueue=True)
+    logger.level("MODEL", no=4, color="<red>", icon="!!!")
+    logger.log("MODEL", "A user updated some information.")
+    level = 0
+    if args.log_level.upper() not in _LOG_LEVEL_MAP:
+        logger.critical("Invalid log level specified. Use one of: TRACE, DEBUG, INFO, WARNING, ERROR, CRITICAL.")
+        exit(ExitCodes.INVALID_LOG_LEVEL)
+        
+    if args.log_level.upper() == "WORK":
+        logger.log(4, "Logging in WORK mode.")
+
+    try:
+        import cv2
+        from matplotlib import pyplot as plt
+    except ImportError:
+        plt = None
+        cv2 = None
+        if args.show_image:
+            logger.warning("matplotlib and cv2 are required for visualization but are not installed.")
+            args.show_image = False
+
     if args.force_device and args.force_device not in ["cuda", "cpu", "mps"]:
         raise ValueError("Invalid device specified. Use 'cuda', 'cpu', or 'mps'.")
     
-    if args.force_device:
-        Console.warning(f"Using forced device: [red]{args.force_device}[/red]")
-    
-    if not os.path.exists(args.dataset_dir):
-        raise FileNotFoundError(f"Dataset directory not found: {args.dataset_dir}")
-    
-    if (args.verbose and not args.debug):
-        args.debug = True
-    
+    if args.device == "mps":
+        logger.warning(f"MPS device is not fully tested.")
+
+    if not os.path.exists(args.input_dir):
+        logger.error(f"Input directory does not exist: {args.input_dir}. Please provide a valid directory.")
+        exit(ExitCodes.NO_INPUT_DIR)
+
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir, exist_ok=True)
-    
-    print("🔔 Starting the sam2vit...")
+
+    logger.info("Starting the sam2vit...")
     start = time.time()
     result = {
         "processed_files": 0,
         "errors": 0,
         "processed_images": 0
     }
-    stream = None
-    if args.no_log:
-        Console.warning("Logging is disabled. Use [yellow]--[/yellow][yellow dim]no-log[/yellow][/dim] to enable logging.")
-        result = main(args)
-    else:
-        stream = open(args.log, "w", encoding="utf-8")
-        stream.write(f"\n\nLogging started at {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
-        Console.set_stream(stream)
-        result = main(args)
-        Console.info(f"Logging completed. Check {args.log} for details.")
-        stream.flush()
-            
+    main(args)
     rich_console.Console().print(table)
     
     end = time.time()
@@ -282,11 +276,9 @@ if __name__ == "__main__":
             elapsed_time = elapsed_time - int(elapsed_time)
 
         return ", ".join(elapsed_parts)
-    import sys
-    Console.success(f"⏱️ [bold green]Total processing time:[/bold green] {elapsed_time_to_string(elapsed_time)}")
+    
+    logger.success(f"Total processing time: {elapsed_time_to_string(elapsed_time)}")
     images_per_second = result["processed_images"] / elapsed_time if elapsed_time > 0 else 0
-    Console.success(f"📸 [bold green]Images per second:[/bold green] {images_per_second:.2f} images/sec")
-    Console.success(f"📂 [bold green]Images OK:[/bold green] {result['processed_images']}")
-    Console.success(f"📂 [bold green]Output directory:[/bold green] {args.output_dir}")
-    if stream and not stream.closed:
-        stream.close()
+    logger.success(f"Images per second: {images_per_second:.2f} images/sec")
+    logger.success(f"Images OK: {result['processed_images']}")
+    logger.success(f"Output directory: {args.output_dir}")
