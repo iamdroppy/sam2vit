@@ -1,5 +1,5 @@
 import json
-from typing import Dict, Any, Optional, Sequence, List[str]
+from typing import Dict, Any, Optional, Sequence, List
 from loguru import logger
 class YoloConfig:
     def __init__(self, yolo: Dict[str, Any]):
