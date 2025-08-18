@@ -2,6 +2,7 @@ import os
 from typing import Any, List, Optional, Sequence, Tuple
 from loguru import logger
 import numpy as np
+from sam2.build_sam import build_sam2
 from PIL import Image
 try:
     import matplotlib.pyplot as plt
@@ -17,10 +18,10 @@ except Exception:
 from sam2.sam2_image_predictor import SAM2ImagePredictor
 
 class SamModel:
-    def __init__(self, sam2_model: SAM2ImagePredictor):
-        self.sam2_model = sam2_model
+    def __init__(self, device):
         self.pwd = os.path.dirname(os.path.abspath(__file__))
-
+        self.sam2_model = build_sam2(self.__get_model_cfg_path(), self.__get_checkpoint_path(), device=device)
+    
     def __get_checkpoint_path(self, model_name: str) -> str:
         """Return the absolute path to a SAM2 checkpoint file for the given model name."""
         return os.path.join(self.pwd, "checkpoints", model_name + ".pt")
@@ -115,7 +116,6 @@ class SamModel:
     def predict_sam2(
         self,
         image: Image.Image,
-        sam2_model: Any,
         mask_threshold: float = 0.05,
         show: bool = False,
     ) -> Image.Image:

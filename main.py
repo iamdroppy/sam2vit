@@ -16,7 +16,6 @@ from rich import console as rich_console
 
 from cuda_device import device_check
 from loguru import logger
-from sam_model import predict_sam2, get_checkpoint_path, get_model_cfg_path
 from clip_model import ClipModel
 from sam_model import SamModel
 from sam2.build_sam import build_sam2
@@ -54,9 +53,6 @@ def main(args: argparse.Namespace):
     device_check(device, device_clip)
     logger.info(f"Using device: `{device.type}` for ✏️ SAM2 and `{device_clip.type}` for CLIP")
 
-    sam2_checkpoint = get_checkpoint_path(sam_model_name)
-    model_cfg = get_model_cfg_path(sam_config_name)
-
     logger.success(f"🌱 Seed: {args.seed}")
     np.random.seed(seed)
 
@@ -70,7 +66,7 @@ def main(args: argparse.Namespace):
         logger.warning(f"Skipping SAM2 model: {sam_model_name} with config: {sam_config_name} on device: {device.type}")
     else:
         logger.info(f"Loading SAM2 model: {sam_model_name} with config: {sam_config_name} on device: {device.type}")
-        sam2_model = SamModel(build_sam2(model_cfg, sam2_checkpoint, device=device))
+        sam2_model = SamModel(build_sam2(args, device=device))
 
     return process(args, clip_model, sam2_model, config)
 
@@ -118,8 +114,8 @@ def process(args: argparse.Namespace, clip_model: ClipModel, sam2_model: SamMode
             img_path = os.path.join(args.dataset_dir, file)
             img = Image.open(img_path)
             if not args.no_sam:
-                segmented_image = predict_sam2(
-                    img, sam2_model, mask_threshold=0.05, show=False
+                segmented_image = sam2_model.predict_sam2(
+                    img, mask_threshold=0.05, show=False
                 )
                 if segmented_image is None:
                     logger.error(f"Failed to segmentate image: {file}")
@@ -129,7 +125,6 @@ def process(args: argparse.Namespace, clip_model: ClipModel, sam2_model: SamMode
                 logger.debug(f"Skipping SAM2 segmentation for image: {file}")
                 segmented_image = img
                 
-
             clip_result = clip_model.process(segmented_image, prompts)
             prompt = clip_result['prompt']
             probability = clip_result['probability_percentage']
