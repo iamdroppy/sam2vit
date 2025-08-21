@@ -6,6 +6,57 @@ This project segments the primary subject near the image center using SAM 2, pai
 
 Example dataset (cars): https://www.kaggle.com/datasets/kshitij192/cars-image-dataset
 
+Prefixes/Items/Postfixes:
+
+```json
+{
+    "prefixes": [
+        "a vehicle that is",
+        "a car that is",
+        "a vehicle painted",
+        "a car painted",
+        "a vehicle with",
+        "a parked vehicle that is",
+        "a moving vehicle that is"
+    ],
+    "items": [
+        "red",
+        "blue",
+        "green",
+        "yellow",
+        "black",
+        "white",
+        "silver",
+        "gray",
+        "orange",
+        "brown",
+        "purple",
+        "pink",
+        "gold",
+        "maroon",
+        "cyan",
+        "metallic silver",
+        "matte black",
+        "light gray",
+        "dark gray",
+        "predominantly red",
+        "predominantly blue",
+        "mostly red with blue accents",
+        "two-tone red and white",
+        "dark blue",
+        "navy blue"
+    ],
+    "postfixes": [
+        "colored car",
+        "colored vehicle",
+        "vehicle",
+        "car",
+        "painted vehicle",
+        "painted car"
+    ]
+}
+```
+
 ## Key features
 
 - SAM 2 center-focused segmentation (center point + margin refinement)
