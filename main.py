@@ -54,7 +54,7 @@ def main(args: argparse.Namespace):
     device_check(device, device_clip)
     logger.info(f"Using device: `{device.type}` for ✏️ SAM2 and `{device_clip.type}` for CLIP")
 
-    logger.success(f"🌱 Seed: {args.seed}")
+    logger.info(f"🌱 Seed: {args.seed}")
     np.random.seed(seed)
 
     # Load Models
@@ -144,7 +144,6 @@ def process(args: argparse.Namespace, clip_model: ClipModel, sam2_model: SamMode
             else:
                 logger.warning(f"Failed to process image: {file}")
         except Exception as e:
-            logger.error(f"Error processing file {file}: {e}")
             logger.error(e)
             errors += 1
     if success == 0 and errors >= 0:
@@ -176,7 +175,7 @@ if __name__ == "__main__":
     args = get_args()
     logger.remove()
     rprint(f"Starting [bold green]sam[/bold green][bold blue]2[/bold blue][bold green]vit[/bold green]")
-    rprint(f"[green]+[/green] [bold orange]positive scale pin:[/bold orange] {args.positive_scale_pin}")
+    rprint(f"[green]+[/green] [bold green]positive scale pin:[/bold green] {args.positive_scale_pin}")
     rprint(f"[red]+[/red] [bold red]negative scale pin:[/bold red] {args.negative_scale_pin}")
     rprint("[green]-[/green]-" * 50)
     logger.add(sys.stderr, level=args.log_level.upper())
