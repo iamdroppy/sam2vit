@@ -60,3 +60,12 @@ def elapsed_time_to_string(elapsed_time):
         elapsed_time = elapsed_time - int(elapsed_time)
 
     return ", ".join(elapsed_parts)
+
+class ExitCodes:
+    SUCCESS = 0
+    INVALID_LOG_LEVEL = -13
+    NO_INPUT_FILES = -41,
+    MISSING_CONFIG = -55
+
+if __name__ == "__main__":
+    pass

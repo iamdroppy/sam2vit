@@ -48,3 +48,6 @@ def process_yolo(args: argparse.Namespace,
                  result: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     
     return None
+
+if __name__ == "__main__":
+    pass

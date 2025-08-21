@@ -71,3 +71,7 @@ class ClipModel:
                 "text_features": text_features,
                 "logits_per_text": logits_per_text
             }
+            
+
+if __name__ == "__main__":
+    pass

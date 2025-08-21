@@ -194,3 +194,6 @@ class SamModel:
             self.show_plot_image(image_with_mask)
         
         return image_with_mask
+
+if __name__ == "__main__":
+    pass

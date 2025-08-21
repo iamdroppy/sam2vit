@@ -52,7 +52,7 @@ def main(args: argparse.Namespace):
     seed = args.seed if args.seed else 3
 
     device_check(device, device_clip)
-    logger.info(f"Using device: `{device.type}` for ✏️ SAM2 and `{device_clip.type}` for CLIP")
+    logger.info(f"Using device: `{device.type}` for ✏️ SAM2 and `{device_clip.type}` for 📎 CLIP")
 
     logger.info(f"🌱 Seed: {args.seed}")
     np.random.seed(seed)

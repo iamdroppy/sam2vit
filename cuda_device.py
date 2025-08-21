@@ -55,3 +55,6 @@ def device_check(device: torch.device, device_clip: torch.device) -> None:
         f" --> 💾 Using {device.type} NOT SUPPORTED by sam2vit. Quitting..."
     )
     exit(0)
+
+if __name__ == "__main__":
+    pass

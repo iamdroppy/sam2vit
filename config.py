@@ -77,3 +77,7 @@ def load_config(file_path: str) -> Config:
     with open(file_path, "r") as f:
         config = Config(json.load(f))
     return config
+
+
+if __name__ == "__main__":
+    pass
