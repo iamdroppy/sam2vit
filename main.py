@@ -154,10 +154,10 @@ def process(args: argparse.Namespace, clip_model: ClipModel, sam2_model: SamMode
     logger.trace(f"Processed {i} files with {success} succeeded and {errors} errors.")
     if success > errors:
         ratio = success / errors
-        logger.success(f"Finished process: Success/Error ratio: {ratio:.2f} in {i} files")
+        logger.success(f"Finished process: Success/Error ratio: {ratio:.4f} in {i} files")
     elif errors > success:
         ratio = errors / success
-        logger.warning(f"Finished process: Error/Success ratio: {ratio:.2f} in {i} files")
+        logger.warning(f"Finished process: Error/Success ratio: {ratio:.4f} in {i} files")
     return {
         "processed_files": i,
         "errors": errors,
