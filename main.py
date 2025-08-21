@@ -17,10 +17,12 @@ from rich import print as rprint
 from cuda_device import device_check
 from loguru import logger
 from clip_model import ClipModel
-from image_processor import process_image, process_yolo
+from image_processor import process_sam2, process_image, process_yolo
 from sam_model import SamModel
 
 from config import Config, load_config
+
+from utils import get_args
 
 _LOG_LEVEL_MAP = {"TRACE": 0, "DEBUG": 10, "INFO": 20, "WARNING": 30, "ERROR": 40, "CRITICAL": 50}
 
@@ -89,11 +91,9 @@ def process(args: argparse.Namespace, clip_model: ClipModel, sam2_model: SamMode
         sam2_model: The SAM2 model used for image segmentation.
     """
     # Load configuration from config.json
-    global _prefixes, _items, _postfixes
-    
-    _prefixes = config.prefixes
-    _items = config.items
-    _postfixes = config.postfixes
+    prefixes = config.prefixes
+    items = config.items
+    postfixes = config.postfixes
 
     prompt_list = config.get_prompts()
     prompts = [prompt for prompt in prompt_list]
@@ -119,14 +119,21 @@ def process(args: argparse.Namespace, clip_model: ClipModel, sam2_model: SamMode
                 continue
             
             logger.trace(f"({success} OK/{errors} NOK) Processing image: {file}")
-            result = process_image(args, file, config, prompts, clip_model, sam2_model)
-            yolo = process_yolo(args, file, config, prompts, clip_model, sam2_model, result)
             
+            img_path = os.path.join(args.input_dir, file)
+            img = Image.open(img_path)
+            
+            # process SAM2 + CLIP
+            result_sam = process_sam2(args, img, sam2_model)
+            result = process_image(result_sam, config, prompts, clip_model)
+
             if result is not None:
-                if result["item"] in _items:
+                if result["item"] in items:
                     os.makedirs(os.path.join(args.output_dir, result["item"]), exist_ok=True)
-                    output_path = os.path.join(args.output_dir, result["item"], file.replace(".jpg", ".png"))
+                    output_path = os.path.join(args.output_dir, result["item"], file.replace(".jpg", ".png").replace(".jpeg", ".png"))
                     out: Image = result["segmented_image"]
+                    if args.output_original:
+                        out: Image = img
                     out.save(output_path)
                     logger.debug(f"{result['item'].capitalize() if result['item'] else 'Unknown'} ({result['probability']:4f}%)\n\t\t\t\t\t\t--> `{result['prompt']}` ")
                     success += 1
@@ -166,43 +173,7 @@ class ExitCodes:
     MISSING_CONFIG = -55
 
 if __name__ == "__main__":
-    
-    default_sam_model_name = "sam2.1_hiera_large"
-    default_sam_config_name = "sam2.1_hiera_l"
-    default_clip_model_name = "ViT-L/14@336px"
-    default_seed = 3
-    
-    arg_parsed = argparse.ArgumentParser(description="Run SAM2 with CLIP for image segmentation and classification.")
-    
-    # defaults
-    # SAM2
-    arg_parsed.add_argument("--no_sam", "-x", default=False, action="store_true", help="Disables the Segmentation")
-    arg_parsed.add_argument("--sam_model", default=default_sam_model_name, type=str, help="SAM2 model name (default: sam2.1_hiera_large)")
-    arg_parsed.add_argument("--sam_config", default=default_sam_config_name, type=str, help="SAM2 config name (default: sam2.1_hiera_l)")
-    # CLIP
-    arg_parsed.add_argument("--clip_model", "-c", default=default_clip_model_name, type=str, help="CLIP model name (default: ViT-L/14@336px)")
-
-    arg_parsed.add_argument("--use_yolo_model", "-y", default=False, action="store_true", help="Use YOLO model for object detection")
-    # np
-    arg_parsed.add_argument("--seed", "-S", default=default_seed, type=int, help="Random seed for reproducibility (default: 3)")
-    arg_parsed.add_argument("--show_image", "-g", action="store_true", default=False, help="Show the output image after each processing step")
-    
-    # io
-    arg_parsed.add_argument("--input_dir", "-i", default="_input", type=str, required=True, help="Path to the dataset directory (default: _input)")
-    arg_parsed.add_argument("--output_dir", "-o", default="_output", type=str, required=True, help="Path to the output directory (default: _output)")
-
-    # logs
-    arg_parsed.add_argument("--device", "-d", type=str, default="cuda", choices=["cpu", "cuda"], help="Sets the device")
-    arg_parsed.add_argument("--log_level", "-l", type=str, default="INFO", choices=["WORK", "TRACE", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"], help="Sets the log level")
-    arg_parsed.add_argument("--file_log_level", "-u", type=str, default="TRACE", choices=["TRACE", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"], help="Sets the log level of `app.log` file (default: trace)")
-    arg_parsed.add_argument("--file_log_name", "-w", type=str, default="app.log", help="Sets the log file name (default: app.log)")
-    arg_parsed.add_argument("--file_log_rotation", "-r", type=str, default="100 MB", help="Sets the log file rotation size (default: 100 MB)")
-    arg_parsed.add_argument("--file_log_no_reset", "-z", type=bool, default=False, help="Do not reset file_log_name on boot")
-
-    arg_parsed.add_argument("--positive_scale_pin", "-p", type=float, default=0.05, help="Scale pin for positive points in SAM2 model (default: 0.05)")
-    arg_parsed.add_argument("--negative_scale_pin", "-n", type=float, default=0.05, help="Scale pin for negative points in SAM2 model (default: 0.05)")
-    #arg_parsed.add_argument("--seed", "-s", default=3, type=int, help="Random seed for reproducibility (default: 3)")
-    args = arg_parsed.parse_args()
+    args = get_args()
     logger.remove()
     rprint(f"Starting [bold green]sam[/bold green][bold blue]2[/bold blue][bold green]vit[/bold green]")
     rprint(f"[green]+[/green] [bold orange]positive scale pin:[/bold orange] {args.positive_scale_pin}")
@@ -218,9 +189,6 @@ if __name__ == "__main__":
     if args.log_level.upper() not in _LOG_LEVEL_MAP:
         logger.critical("Invalid log level specified. Use one of: TRACE, DEBUG, INFO, WARNING, ERROR, CRITICAL.")
         exit(ExitCodes.INVALID_LOG_LEVEL)
-        
-    if args.log_level.upper() == "WORK":
-        logger.log(4, "Logging in WORK mode.")
 
     try:
         import cv2
@@ -245,14 +213,15 @@ if __name__ == "__main__":
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir, exist_ok=True)
 
-    logger.info("Starting the sam2vit...")
     start = time.time()
     result = {
         "processed_files": 0,
         "errors": 0,
         "processed_images": 0
     }
+    
     main(args)
+    
     rich_console.Console().print(table)
     
     end = time.time()
