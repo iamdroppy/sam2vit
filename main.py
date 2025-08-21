@@ -22,7 +22,7 @@ from sam_model import SamModel
 
 from config import Config, load_config
 
-from utils import get_args, elapsed_time_to_string
+from utils import get_args, elapsed_time_to_string, ExitCodes
 
 _LOG_LEVEL_MAP = {"TRACE": 0, "DEBUG": 10, "INFO": 20, "WARNING": 30, "ERROR": 40, "CRITICAL": 50}
 
@@ -164,13 +164,6 @@ def process(args: argparse.Namespace, clip_model: ClipModel, sam2_model: SamMode
         "processed_images": i - errors
     }
     
-
-class ExitCodes:
-    SUCCESS = 0
-    INVALID_LOG_LEVEL = -13
-    NO_INPUT_FILES = -41,
-    MISSING_CONFIG = -55
-
 if __name__ == "__main__":
     args = get_args()
     logger.remove()
