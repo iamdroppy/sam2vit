@@ -14,13 +14,14 @@ except Exception:
 except Exception:
     cv2 = None 
     logger.warning("opencv-python is required for mask border drawing but is not installed.")
-
+from config import Config
 from sam2.sam2_image_predictor import SAM2ImagePredictor
 
 class SamModel:
-    def __init__(self, device):
+    def __init__(self, device, config: Config, config_name: str = "", checkpoint_path: str = "") -> None:
         self.pwd = os.path.dirname(os.path.abspath(__file__))
-        self.sam2_model = build_sam2(self.__get_model_cfg_path(), self.__get_checkpoint_path(), device=device)
+        self.config = config
+        self.sam2_model = build_sam2(self.__get_model_cfg_path(config_name), self.__get_checkpoint_path(checkpoint_path), device=device)
     
     def __get_checkpoint_path(self, model_name: str) -> str:
         """Return the absolute path to a SAM2 checkpoint file for the given model name."""
@@ -93,7 +94,7 @@ class SamModel:
             plt.axis('off')
             plt.show()
             
-    def show_plot_image(image: Image.Image) -> None:
+    def show_plot_image(self, image: Image.Image) -> None:
         """Display a PIL image using Matplotlib without axes."""
         if plt is None:
             raise ImportError("matplotlib is required for show_plot_image() but is not installed.")
@@ -103,13 +104,13 @@ class SamModel:
         plt.show()
     
 
-    def _combine_masks_to_alpha(masks: np.ndarray) -> np.ndarray:
+    def _combine_masks_to_alpha(self, masks: np.ndarray) -> np.ndarray:
         """Combine a stack of boolean masks into a single 0/255 uint8 alpha mask."""
         # Equivalent to iterative logical_or but vectorized
         combined = np.any(masks, axis=0)
         return combined.astype(np.uint8) * 255
 
-    def _get_predictor(self) -> SAM2ImagePredictor:
+    def _create_predictor(self) -> SAM2ImagePredictor:
         """Get the SAM2 image predictor."""
         return SAM2ImagePredictor(self.sam2_model)
 
@@ -118,6 +119,7 @@ class SamModel:
         image: Image.Image,
         mask_threshold: float = 0.05,
         show: bool = False,
+        scale_pin: float = 0.08,
     ) -> Image.Image:
         """Run SAM2 predictor on an image and return an RGBA image with background whitened.
 
@@ -129,10 +131,15 @@ class SamModel:
         Returns:
             An RGBA PIL Image where non-masked areas are white.
         """
+        logger.trace(f"Predicting sam2, with a mask_threshold of {mask_threshold} and scale_pin of {scale_pin}")
         # Convert input PIL image to a 3-channel RGB numpy array (H, W, 3)
         image_np = np.array(image.convert("RGB"))
+        
+        # Initialize the predictor instance
+        predictor = self._create_predictor()
+        
         # Initialize the SAM2 predictor and bind the image
-        self._get_predictor().set_image(image_np)
+        predictor.set_image(image_np)
 
         # Seed with a single positive point at the image center
         h, w = image_np.shape[:2]
@@ -140,7 +147,7 @@ class SamModel:
         input_labels = np.array([1])
 
         # First pass: request multiple candidate masks and their scores/logits
-        masks, scores, logits = self._get_predictor().predict(
+        masks, scores, logits = predictor.predict(
             point_coords=point_coords,
             point_labels=input_labels,
             multimask_output=True,
@@ -152,13 +159,23 @@ class SamModel:
         logits = logits[sorted_ind]
         
         # Define additional positive points around the center for refinement
-        m = int(min(w, h) * mask_threshold)
-        point_coords = np.array([[w//2, h//2], [w+m, h+m], [w-m, h+m]])
-        input_labels = np.array([1, 1, 1])
+        m = int(min(w//2, h//2) * mask_threshold)
+        positive_pin_max = int(min(w//2, h//2) * scale_pin)
+
+        # Pins to half of the screen,
+        # Pins to half of the screen and scales with scale_pin
+        segmentation_points = [ # segmentation pins
+            [w//2, h//2],
+            [w+positive_pin_max, h+positive_pin_max],
+            [w+positive_pin_max, h],
+            [w, h+positive_pin_max]
+        ]
+        point_coords = np.array(segmentation_points)
+        input_labels = np.array([1, 1, 1, 1])
 
         # Use the top candidate's logits as a prior and refine to a single mask
         mask_input = logits[np.argmax(scores), :, :]
-        masks, scores, _ = self._get_predictor.predict(
+        masks, scores, _ = predictor.predict(
             point_coords=point_coords,
             point_labels=input_labels,
             mask_input=mask_input[None, :, :],

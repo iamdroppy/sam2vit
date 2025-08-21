@@ -21,12 +21,11 @@ class YoloConfig:
         return self.confidence_threshold
 
 class Config:
-    def __init__(self):
-        config_dict = json.load(open("config.json", "r"))
+    def __init__(self, config_dict: Dict[str, Any]):
         self.prefixes = config_dict.get("prefixes", [])
         self.items = config_dict.get("items", [])
         self.postfixes = config_dict.get("postfixes", [])
-        self.yolo = YoloConfig(config_dict.get("yolo", {}))
+        self.yolo = YoloConfig(config_dict.get("yolo", {"enabled": False, "mode": "output", "model": "yolov5s", "confidence_threshold": 0.5}))
 
     def get_prefixes(self) -> Sequence[str]:
         return self.prefixes
@@ -38,7 +37,7 @@ class Config:
         return self.postfixes
 
     
-    def get_prompts(self, args) -> List[str]:
+    def get_prompts(self) -> List[str]:
         """
         Generate a list of prompt strings by combining each item with every prefix and postfix.
 

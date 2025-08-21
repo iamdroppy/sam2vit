@@ -5,11 +5,48 @@
         "model": "yolov5s",
         "confidence_threshold": 0.5
     },
-    "prefixes": ["an athlete man", "a man",
-    "an athlete woman", "a woman",
-    "an athlete child", "an athlete person", "an athlete",
-    "an athlete playing", "an athlete matching", "an athlete",
-    "playing", "matching", "aiming", "throwing"],
-    "items": ["air hockey", "ampute football", "archery", "arm wrestling", "axe throwing", "balance beam", "barell racing", "baseball", "basketball", "baton twirling", "bike polo", "billiards", "bmx", "bobsled", "bowling", "boxing", "bull riding", "bungee jumping"],
-    "postfixes": ["running a lot", "battling fiercely", "in action", "in a game", "during a match", "in a competition", "in a tournament", "in a sport", "in a league", "in a championship"]
+    "prefixes": [
+        "a vehicle that is",
+        "a car that is",
+        "a vehicle painted",
+        "a car painted",
+        "a vehicle with",
+        "a parked vehicle that is",
+        "a moving vehicle that is"
+    ],
+    "items": [
+        "red",
+        "blue",
+        "green",
+        "yellow",
+        "black",
+        "white",
+        "silver",
+        "gray",
+        "orange",
+        "brown",
+        "purple",
+        "pink",
+        "gold",
+        "maroon",
+        "cyan",
+        "metallic silver",
+        "matte black",
+        "light gray",
+        "dark gray",
+        "predominantly red",
+        "predominantly blue",
+        "mostly red with blue accents",
+        "two-tone red and white",
+        "dark blue",
+        "navy blue"
+    ],
+    "postfixes": [
+        "colored car",
+        "colored vehicle",
+        "vehicle",
+        "car",
+        "painted vehicle",
+        "painted car"
+    ]
 }

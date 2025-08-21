@@ -10,7 +10,8 @@ _C.*
 outputs/*
 checkpoints/*
 demo/backend/checkpoints/*.pt
-
+*_input/
+*_output/
 *.pt
 *.jpg
 *.png
