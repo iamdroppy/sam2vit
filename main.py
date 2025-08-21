@@ -22,7 +22,7 @@ from sam_model import SamModel
 
 from config import Config, load_config
 
-from utils import get_args
+from utils import get_args, elapsed_time_to_string
 
 _LOG_LEVEL_MAP = {"TRACE": 0, "DEBUG": 10, "INFO": 20, "WARNING": 30, "ERROR": 40, "CRITICAL": 50}
 
@@ -225,27 +225,6 @@ if __name__ == "__main__":
     
     end = time.time()
     elapsed_time = end - start
-    # if it reaches 1 ms, show 1ms, also if it reaches 1 second, also show 1.00 seconds, if it also reaches 1 minute, show 1.00 minutes
-    def elapsed_time_to_string(elapsed_time):
-        """
-        Converts elapsed time in seconds to a human-readable string format.
-        Handles milliseconds, seconds, minutes, and hours.
-        """
-        elapsed_parts = []
-        if elapsed_time < 1:
-            elapsed_parts.append(f"{elapsed_time * 1000:.2f} ms")
-            elapsed_time = elapsed_time * 1000  # convert to milliseconds
-        if elapsed_time >= 1:
-            elapsed_parts.append(f"{elapsed_time:.2f} seconds")
-            elapsed_time = elapsed_time - int(elapsed_time)
-        if elapsed_time >= 60:
-            elapsed_parts.append(f"{elapsed_time:.2f} minutes")
-            elapsed_time = elapsed_time - int(elapsed_time)
-        if elapsed_time >= 3600:
-            elapsed_parts.append(f"{elapsed_time / 3600:.2f} hours")
-            elapsed_time = elapsed_time - int(elapsed_time)
-
-        return ", ".join(elapsed_parts)
     
     logger.success(f"Total processing time: {elapsed_time_to_string(elapsed_time)}")
     images_per_second = result["processed_images"] / elapsed_time if elapsed_time > 0 else 0

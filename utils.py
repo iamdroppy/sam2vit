@@ -38,3 +38,25 @@ def get_args():
     arg_parsed.add_argument("--negative_scale_pin", "-n", type=float, default=0, help="Scale pin for negative points in SAM2 model (default: 0)")
     #arg_parsed.add_argument("--seed", "-s", default=3, type=int, help="Random seed for reproducibility (default: 3)")
     return arg_parsed.parse_args()
+
+# if it reaches 1 ms, show 1ms, also if it reaches 1 second, also show 1.00 seconds, if it also reaches 1 minute, show 1.00 minutes
+def elapsed_time_to_string(elapsed_time):
+    """
+    Converts elapsed time in seconds to a human-readable string format.
+    Handles milliseconds, seconds, minutes, and hours.
+    """
+    elapsed_parts = []
+    if elapsed_time < 1:
+        elapsed_parts.append(f"{elapsed_time * 1000:.2f} ms")
+        elapsed_time = elapsed_time * 1000  # convert to milliseconds
+    if elapsed_time >= 1:
+        elapsed_parts.append(f"{elapsed_time:.2f} seconds")
+        elapsed_time = elapsed_time - int(elapsed_time)
+    if elapsed_time >= 60:
+        elapsed_parts.append(f"{elapsed_time:.2f} minutes")
+        elapsed_time = elapsed_time - int(elapsed_time)
+    if elapsed_time >= 3600:
+        elapsed_parts.append(f"{elapsed_time / 3600:.2f} hours")
+        elapsed_time = elapsed_time - int(elapsed_time)
+
+    return ", ".join(elapsed_parts)
