@@ -16,5 +16,3 @@ demo/backend/checkpoints/*.pt
 output/
 dataset_cars/
 *.log
-
-unique_label.py
