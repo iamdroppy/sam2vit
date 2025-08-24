@@ -193,7 +193,7 @@ The program prints device info and prompt counts. Results save to `{{ output_dir
 - If `--yolo` is set, it will try to segment the image-unless `--require_yolo`, then it's a must segment the image
 - SAM2 processing
 - If `--post-processing-yolo` is active, it will run YOLO after SAM2 (in case SAM2 crops wrongly)
-- Runs `CLIP` on |prefix|x|**item**|x|postfix|`
+- Runs `CLIP` on |`prefix`|x|**item**|x|`postfix`|
 
 ## Troubleshooting
 
