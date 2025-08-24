@@ -6,7 +6,7 @@ This project segments the primary subject near the image center using SAM 2, pai
 
 Yolo11 was tested with `yolo11x-seg.pt` model.
 
-Yolo can be pre-processed (with `--yolo` as optional or `-require-yolo` as required) or required after sam2 segment with `post-process-yolo
+Yolo can be pre-processed (with `--yolo` as optional or `--require-yolo` as required) or required after sam2 segment with `post-process-yolo
 
 > Example cars dataset: https://www.kaggle.com/datasets/kshitij192/cars-image-dataset
 
@@ -37,6 +37,10 @@ Prefixes/Items/Postfixes:
     ]
 }
 ```
+
+| Input | Output |
+|-------|--------|
+|![(Input dir)](images/input.png)|![Output dir](images/output.png)|
 
 ## Key features
 
@@ -140,13 +144,6 @@ python main.py --input_dir cars_input --output_dir cars_output --require_yolo --
 
 The program prints device info and prompt counts. Results save to `{{ output_dir }}/<item>/<image>.png`, where `output_dir` is `--output_dir`, `<item>` is the `config.json` item that it was recognized with and `<image>` is the real image name to `.png`
 
-![(Input dir)](images/input.png)
-![Output dir](images/output.png)
-
-
-```markdown
-```
-
 ## Configuration
 
 - `config.json` contains three arrays: `prefixes`, `items`, and `postfixes`.
@@ -196,7 +193,7 @@ The program prints device info and prompt counts. Results save to `{{ output_dir
 - If `--yolo` is set, it will try to segment the image-unless `--require_yolo`, then it's a must segment the image
 - SAM2 processing
 - If `--post-processing-yolo` is active, it will run YOLO after SAM2 (in case SAM2 crops wrongly)
-- Runs `CLIP` on |prefix|x|**item**|x|postfix|`
+- Runs `CLIP` on |`prefix`|x|**item**|x|`postfix`|
 
 ## Troubleshooting
 
