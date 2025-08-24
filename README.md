@@ -6,7 +6,7 @@ This project segments the primary subject near the image center using SAM 2, pai
 
 Yolo11 was tested with `yolo11x-seg.pt` model.
 
-Yolo can be pre-processed (with `--yolo` as optional or `-require-yolo` as required) or required after sam2 segment with `post-process-yolo
+Yolo can be pre-processed (with `--yolo` as optional or `--require-yolo` as required) or required after sam2 segment with `post-process-yolo
 
 > Example cars dataset: https://www.kaggle.com/datasets/kshitij192/cars-image-dataset
 
