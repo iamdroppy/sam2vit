@@ -112,6 +112,7 @@ python main.py --input_dir cars_input --output_dir cars_output --require_yolo --
    - `--post-process-yolo` supplied - another verification on the segmentation via yolo
    - CLIP will be interrogated based on `prefixes`x`items`x`prefixes` and a folder will be created on directory `cars_output` with the `item` name from the prompt
    - It will save the image cropped as `original_image` is not set.
+
 ### Flags:
 
 | Flag | Short | Type | Default | Action / Choices | Description |
@@ -138,6 +139,13 @@ python main.py --input_dir cars_input --output_dir cars_output --require_yolo --
 | `--negative_scale_pin` | `-n` | float | `0` | — | Scale (pixels) for negative SAM2 points |
 
 The program prints device info and prompt counts. Results save to `{{ output_dir }}/<item>/<image>.png`, where `output_dir` is `--output_dir`, `<item>` is the `config.json` item that it was recognized with and `<image>` is the real image name to `.png`
+
+![(Input dir)](images/input.png)
+![Output dir](images/output.png)
+
+
+```markdown
+```
 
 ## Configuration
 
