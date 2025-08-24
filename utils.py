@@ -1,4 +1,5 @@
 import argparse
+from loguru import logger
 def get_args():
     
     default_sam_model_name = "sam2.1_hiera_large"
@@ -16,7 +17,6 @@ def get_args():
     # CLIP
     arg_parsed.add_argument("--clip_model", "-c", default=default_clip_model_name, type=str, help=f"CLIP model name (default: {default_clip_model_name})")
 
-    arg_parsed.add_argument("--use_yolo_model", "-y", default=False, action="store_true", help="Use YOLO model for object detection")
     # np
     arg_parsed.add_argument("--seed", "-S", default=default_seed, type=int, help=f"Random seed for reproducibility (default: {default_seed})")
     arg_parsed.add_argument("--show_image", "-g", action="store_true", default=False, help="Show the output image after each processing step")
@@ -25,10 +25,13 @@ def get_args():
     arg_parsed.add_argument("--input_dir", "-i", default="_input", type=str, required=True, help="Path to the dataset directory (default: _input)")
     arg_parsed.add_argument("--output_dir", "-o", default="_output", type=str, required=True, help="Path to the output directory (default: _output)")
     arg_parsed.add_argument("--output_original", default=False, action='store_true', help="If the output should be original, otherwise, segmented (default: False)")
+    arg_parsed.add_argument("--yolo", default=False, action='store_true', help="If the YOLO model should be used as the first inference (default: False)")
+    arg_parsed.add_argument("--require_yolo", default=False, action='store_true', help="If the YOLO model MUST predict the type in order to be passed to the next layer - auto enables yolo (default: False)")
+    arg_parsed.add_argument("--post_process_yolo", default=False, action='store_true', help="If the YOLO model MUST predict the type in order to be passed to the next layer AFTER SAM2 - auto enables yolo (default: False)")
 
     # logs
     arg_parsed.add_argument("--device", "-d", type=str, default="cuda", choices=["cpu", "cuda"], help="Sets the device")
-    arg_parsed.add_argument("--log_level", "-l", type=str, default="INFO", choices=["WORK", "TRACE", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"], help="Sets the log level")
+    arg_parsed.add_argument("--log_level", "-l", type=str, default="INFO", choices=["TRACE", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"], help="Sets the log level")
     arg_parsed.add_argument("--file_log_level", "-u", type=str, default="TRACE", choices=["TRACE", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"], help="Sets the log level of `app.log` file (default: trace)")
     arg_parsed.add_argument("--file_log_name", "-w", type=str, default="app.log", help="Sets the log file name (default: app.log)")
     arg_parsed.add_argument("--file_log_rotation", "-r", type=str, default="100 MB", help="Sets the log file rotation size (default: 100 MB)")
@@ -37,7 +40,11 @@ def get_args():
     arg_parsed.add_argument("--positive_scale_pin", "-p", type=float, default=30, help="Scale pin for positive points in SAM2 model (default: 30)")
     arg_parsed.add_argument("--negative_scale_pin", "-n", type=float, default=0, help="Scale pin for negative points in SAM2 model (default: 0)")
     #arg_parsed.add_argument("--seed", "-s", default=3, type=int, help="Random seed for reproducibility (default: 3)")
-    return arg_parsed.parse_args()
+    parsed = arg_parsed.parse_args()
+    if parsed.require_yolo and not parsed.yolo:
+        parsed.yolo = True
+        logger.warning(f"--require_yolo has been set without --yolo. Auto enabling YOLO.")
+    return parsed
 
 # if it reaches 1 ms, show 1ms, also if it reaches 1 second, also show 1.00 seconds, if it also reaches 1 minute, show 1.00 minutes
 def elapsed_time_to_string(elapsed_time):

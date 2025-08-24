@@ -19,12 +19,12 @@ from loguru import logger
 from clip_model import ClipModel
 from image_processor import process_sam2, process_image, process_yolo
 from sam_model import SamModel
-
+from yolo_model import YoloModel
 from config import Config, load_config
 
-from utils import get_args, elapsed_time_to_string, ExitCodes
+import shutil
 
-_LOG_LEVEL_MAP = {"TRACE": 0, "DEBUG": 10, "INFO": 20, "WARNING": 30, "ERROR": 40, "CRITICAL": 50}
+from utils import get_args, elapsed_time_to_string, ExitCodes
 
 table = RichTable(title="SAM2 with CLIP Results", show_lines=True, show_header=True)
 table.add_column("Status", style="")
@@ -54,7 +54,7 @@ def main(args: argparse.Namespace):
     device_check(device, device_clip)
     logger.info(f"Using device: `{device.type}` for ✏️ SAM2 and `{device_clip.type}` for 📎 CLIP")
 
-    logger.info(f"🌱 Seed: {args.seed}")
+    logger.info(f"🌱 Numpy seed: {args.seed}")
     np.random.seed(seed)
 
     # Load Models
@@ -66,6 +66,7 @@ def main(args: argparse.Namespace):
     
     clip_model = ClipModel(clip_model_name, device_clip)
     sam2_model = None
+    yolo_model = None
     if args.no_sam:
         logger.warning(f"Skipping SAM2 model: {sam_model_name} with config: {sam_config_name} on device: {device.type}")
     else:
@@ -77,11 +78,13 @@ def main(args: argparse.Namespace):
         logger.info(f"Loading SAM2 model: {sam_model_name} with config: {sam_config_name} on device: {device.type}")
         sam2_model = SamModel(device=device, config=config, config_name=sam_config_name, checkpoint_path=sam_model_name)
 
-    return process(args, clip_model, sam2_model, config)
+    if args.yolo or args.post_process_yolo:
+        logger.info("Loading YOLO model...")
+        yolo_model = YoloModel(config)
+    return process(args, clip_model, sam2_model, yolo_model, config)
 
 
-
-def process(args: argparse.Namespace, clip_model: ClipModel, sam2_model: SamModel, config: Config) -> Dict[str, int]:
+def process(args: argparse.Namespace, clip_model: ClipModel, sam2_model: SamModel, yolo_model: YoloModel, config: Config) -> Dict[str, int]:
     """
     Processes images in the '--dataset-dir' directory using the SAM2 model for segmentation and CLIP model for classification.
     Outputs segmented images to the '--output-dir' directory, organized by identified item categories using the CLIP and SAM2 models.
@@ -118,33 +121,73 @@ def process(args: argparse.Namespace, clip_model: ClipModel, sam2_model: SamMode
                     wrong_ext_advised = True
                 continue
             
-            logger.trace(f"({success} OK/{errors} NOK) Processing image: {file}")
-            
             img_path = os.path.join(args.input_dir, file)
             img = Image.open(img_path)
-            
-            # process SAM2 + CLIP
-            result_sam = process_sam2(args, img, sam2_model)
-            result = process_image(result_sam, config, prompts, clip_model)
-
-            if result is not None:
-                if result["item"] in items:
-                    os.makedirs(os.path.join(args.output_dir, result["item"]), exist_ok=True)
-                    output_path = os.path.join(args.output_dir, result["item"], file.replace(".jpg", ".png").replace(".jpeg", ".png"))
-                    out: Image = result["segmented_image"]
-                    if args.output_original:
-                        out: Image = img
-                    out.save(output_path)
-                    logger.debug(f"{result['item'].capitalize() if result['item'] else 'Unknown'} ({result['probability']:4f}%)\n\t\t\t\t\t\t--> `{result['prompt']}` ")
-                    success += 1
-                else:
-                    logger.warning(f"Can't find prompt in {file} with prompt: {result['prompt']}")
-                    errors += 1
+            # ---------------------------------------- #
+            def process_sam2vit(img, original_img):
+                result_seg = process_sam2(args, img, sam2_model) if args.no_sam is False or sam2_model is not None else img
                 
+                # post processing yolo
+                if args.post_process_yolo:
+                    result_yolo, label, confidence = yolo_model.predict(result_seg)
+                    if result_yolo is not None:
+                        logger.info(f"YOLO post-processing: {label} ({confidence:.2f})")
+                        result_seg = result_yolo
+                    elif args.no_sam:
+                        logger.warning(f"(SAM2 disabled) YOLO did not detect for file: {file}. Not proceeding.")
+                        return False
+                    else:
+                        logger.warning(f"YOLO did not detect for file after SAM2 segmentation: {file}. Not proceeding.")
+                        return False
+                
+                result = process_image(result_seg, config, prompts, clip_model)
+
+                if result is not None:
+                    if result["item"] in items:
+                        os.makedirs(os.path.join(args.output_dir, result["item"]), exist_ok=True)
+                        output_path = os.path.join(args.output_dir, result["item"], file.replace(".jpg", ".png").replace(".jpeg", ".png"))
+                        out: Image = result["segmented_image"]
+                        if args.output_original:
+                            out: Image = original_img
+                        out.save(output_path)
+                        logger.debug(f"{result['item'].capitalize() if result['item'] else 'Unknown'} ({result['probability']:4f}%)\n\t\t\t\t\t\t--> `{result['prompt']}` ")
+                        return True
+                    else:
+                        logger.error(f"Can't find prompt in `{file}` using prompt: `{result['prompt']}`")
+                        return False
+            # ---------------------------------------- #
+            
+            # process YOLO > SAM > VIT
+            start_process = time.time()
+            if args.yolo and yolo_model is not None:
+                result_yolo, label, threshold = yolo_model.predict(img)
+                result_success = False
+                if result_yolo is not None:
+                    logger.info(f"YOLO detected: {label} ({threshold:.2f})")
+                    result_success = process_sam2vit(result_yolo, img)
+                elif not args.require_yolo:
+                    logger.debug("YOLO detected no objects.")
+                    result_success = process_sam2vit(img, img)
+                else:
+                    logger.warning(f"YOLO detected no objects, skipping image as --require_yolo is set. Categorizing file to {os.path.join(args.output_dir, 'unknown', file)}")
+                    os.makedirs(os.path.join(args.output_dir, 'unknown'), exist_ok=True)
+                    shutil.copy(img_path, os.path.join(args.output_dir, 'unknown', file))
             else:
-                logger.warning(f"Failed to process image: {file}")
+                # process SAM > VIT
+                result_success = process_sam2vit(img, img)
+            end_process = time.time()
+            seconds_to_process = end_process - start_process
+            logger.trace(f"Time to process image: {seconds_to_process:.2f} seconds")
+            if result_success:
+                success += 1
+                logger.success(f"{success} ✅/❌ {errors} success x errors | Processed image: {file} successfully.")
+            else:
+                errors += 1
+                logger.error(f"{success} ✅/❌ {errors} success x errors | Not processed {file} successfully")
         except Exception as e:
             logger.error(e)
+            # show stacktrace
+            logger.debug("".join(logger._core.format_exception(e)))
             errors += 1
     if success == 0 and errors >= 0:
         logger.critical(f"No images were processed (with {errors}). Please check the input directory.")
@@ -164,6 +207,7 @@ def process(args: argparse.Namespace, clip_model: ClipModel, sam2_model: SamMode
         "processed_images": i - errors
     }
     
+# Initializes the script file.
 if __name__ == "__main__":
     args = get_args()
     logger.remove()
@@ -177,10 +221,6 @@ if __name__ == "__main__":
         os.remove(name)
         logger.trace(f"The log file '{name}' was reset on boot.")
     logger.add(name, level=args.file_log_level.upper(), rotation=args.file_log_rotation if args.file_log_rotation else "100 MB", enqueue=True)
-    level = 0
-    if args.log_level.upper() not in _LOG_LEVEL_MAP:
-        logger.critical("Invalid log level specified. Use one of: TRACE, DEBUG, INFO, WARNING, ERROR, CRITICAL.")
-        exit(ExitCodes.INVALID_LOG_LEVEL)
 
     try:
         import cv2

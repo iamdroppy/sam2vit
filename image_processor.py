@@ -6,6 +6,7 @@ from sam_model import SamModel
 from loguru import logger
 import os
 from numpy import ndarray
+from yolo_model import YoloModel
 from PIL import Image
 
 def process_sam2(args: argparse.Namespace,
@@ -46,7 +47,7 @@ def process_yolo(args: argparse.Namespace,
                  clip_model: ClipModel,
                  sam2_model: SamModel,
                  result: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-    
+    logger.critical(f"Processing YOLO for file: {file} is done over the YoloModel.")
     return None
 
 if __name__ == "__main__":

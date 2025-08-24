@@ -1,31 +1,15 @@
 import json
 from typing import Dict, Any, Optional, Sequence, List
 from loguru import logger
-class YoloConfig:
-    def __init__(self, yolo: Dict[str, Any]):
-        self.enabled = yolo.get("enabled", True)
-        self.mode = yolo.get("mode", "output")
-        self.model = yolo.get("model", "yolov5s")
-        self.confidence_threshold = yolo.get("confidence_threshold", 0.5)
-    
-    def enabled(self) -> bool:
-        return self.enabled
-    
-    def mode(self) -> str:
-        return self.mode
-
-    def model(self) -> str:
-        return self.model
-
-    def confidence_threshold(self) -> float:
-        return self.confidence_threshold
 
 class Config:
     def __init__(self, config_dict: Dict[str, Any]):
         self.prefixes = config_dict.get("prefixes", [])
         self.items = config_dict.get("items", [])
         self.postfixes = config_dict.get("postfixes", [])
-        self.yolo = YoloConfig(config_dict.get("yolo", {"enabled": False, "mode": "output", "model": "yolov5s", "confidence_threshold": 0.5}))
+        self.yolo_model = config_dict.get("yolo_model", "yolo11x-seg.pt")
+        self.yolo_confidence_threshold = config_dict.get("yolo_confidence_threshold", 0.5)
+        self.yolo_prompts = config_dict.get("yolo_prompts", [])
 
     def get_prefixes(self) -> Sequence[str]:
         return self.prefixes
@@ -78,6 +62,70 @@ def load_config(file_path: str) -> Config:
         config = Config(json.load(f))
     return config
 
+# not used yet.
+class ArgsConfig:
+    def __init__(self, args: Dict[str, Any]):
+        self.args = args
+
+    def get(self, key: str, default: Any = None) -> Any:
+        return self.args.get(key, default)
+    
+    def no_sam(self) -> bool:
+        return self.args.get("no_sam", False)
+    
+    def sam_model(self) -> str:
+        return self.args.get("sam_model", "sam2.1_hiera_large")
+    
+    def sam_config(self) -> str:
+        return self.args.get("sam_config", "sam2.1_hiera_l")
+
+    def clip_model(self) -> str:
+        return self.args.get("clip_model", "ViT-L/14@336px")
+
+    def use_yolo_model(self) -> bool:
+        return self.args.get("use_yolo_model", False)
+
+    def seed(self) -> int:
+        return self.args.get("seed", 3)
+
+    def show_image(self) -> bool:
+        return self.args.get("show_image", False)
+
+    def input_dir(self) -> str:
+        return self.args.get("input_dir", "_input")
+
+    def output_dir(self) -> str:
+        return self.args.get("output_dir", "_output")
+
+    def output_original(self) -> bool:
+        return self.args.get("output_original", False)
+
+    def yolo(self) -> bool:
+        return self.args.get("yolo", False)
+
+    def device(self) -> str:
+        return self.args.get("device", "cuda")
+
+    def log_level(self) -> str:
+        return self.args.get("log_level", "INFO")
+
+    def file_log_level(self) -> str:
+        return self.args.get("file_log_level", "TRACE")
+
+    def file_log_name(self) -> str:
+        return self.args.get("file_log_name", "app.log")
+
+    def file_log_rotation(self) -> str:
+        return self.args.get("file_log_rotation", "100 MB")
+
+    def file_log_no_reset(self) -> bool:
+        return self.args.get("file_log_no_reset", False)
+
+    def positive_scale_pin(self) -> float:
+        return self.args.get("positive_scale_pin", 30.0)
+
+    def negative_scale_pin(self) -> float:
+        return self.args.get("negative_scale_pin", 0.0)
 
 if __name__ == "__main__":
     pass
