@@ -18,11 +18,14 @@ from config import Config
 from sam2.sam2_image_predictor import SAM2ImagePredictor
 
 class SamModel:
-    def __init__(self, device, config: Config, config_name: str = "", checkpoint_path: str = "") -> None:
+    def __init__(self, device, config: Config = None, config_name: str = "", checkpoint_path: str = "", cfg_dict = None) -> None:
         self.pwd = os.path.dirname(os.path.abspath(__file__))
         self.config = config
+        if self.config is None:
+            self.config = Config(cfg_dict)
         self.sam2_model = build_sam2(self.__get_model_cfg_path(config_name), self.__get_checkpoint_path(checkpoint_path), device=device)
-    
+    def update_cfg(self, cfg_dict) -> None:
+        self.config = Config(cfg_dict)
     def __get_checkpoint_path(self, model_name: str) -> str:
         """Return the absolute path to a SAM2 checkpoint file for the given model name."""
         return os.path.join(self.pwd, "checkpoints", model_name + ".pt")

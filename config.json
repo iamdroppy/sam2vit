@@ -2,6 +2,8 @@
     "yolo_model": "yolo11x-seg.pt",
     "yolo_confidence_threshold": 0.5,
     "yolo_prompts": ["car", "cars", "vehicle", "vehicles", "motorcycle", "motorcycles", "motorcar"],
+    "csv_prefixes": ["a"],
+    "csv_postfixes": ["car", "vehicle"],
     "prefixes": [
         "a vehicle that is",
         "a car that is",

@@ -38,9 +38,10 @@ Prefixes/Items/Postfixes:
 }
 ```
 
-| Input | Output |
-|-------|--------|
-|![(Input dir)](images/input.png)|![Output dir](images/output.png)|
+|                                                      |                                  |
+|------------------------------------------------------|----------------------------------|
+| ![(Input dir)](images/input.png)                     | ![Output dir](images/output.png) |
+| ![(gradio)](images/gradio.png) via `python gr_app.py` |                                  |
 
 ## Key features
 
@@ -50,6 +51,7 @@ Prefixes/Items/Postfixes:
 - YOLOv11 for pre-proccessing or postprocessing
 - CLIP-based top-prompt selection and result reorganization
 - Device-aware execution: CUDA, Apple MPS, or CPU (MPS CPU fallback supported)
+- Gradio UI via `python gr_app.py`
 
 ## How it works (pipeline)
 
@@ -225,6 +227,9 @@ The program prints device info and prompt counts. Results save to `{{ output_dir
 - [x] Debug logging and console table output
 - [x] Edge cases and troubleshooting documentation
 - [x] Optional object detector (YOLO) to get the main object in image
+- [x] Optional YOLO pre-processing (`--yolo`) and required processing (`--require-yolo`)]
+- [x] Optional YOLO post-processing (`--post-process-yolo`)
+- [x] Gradio UI via `gr_app.py`
 
 ### ⚠️ Planned (priority top to bottom)
 

@@ -4,9 +4,9 @@ from PIL import Image
 from ultralytics import YOLO
 
 class YoloModel:
-    def __init__(self, config: Config):
+    def __init__(self, config: Config, name: str = "yolo11x-seg.pt") -> None:
         self.config = config
-        self.model = YOLO(self.config.yolo_model, task="segment")
+        self.model = YOLO(name, task="segment")
 
     def predict(self, image: Image):
         prompts = self.config.yolo_prompts

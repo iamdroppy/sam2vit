@@ -1,5 +1,10 @@
 import argparse
 from loguru import logger
+
+def write_to_csv(file_name:str, image_path: str, caption: str):
+    """Writes the image path and caption to a CSV file."""
+    with open(file_name, "a") as f:
+        f.write(f"{image_path},{caption}\n")
 def get_args():
     
     default_sam_model_name = "sam2.1_hiera_large"
@@ -39,8 +44,14 @@ def get_args():
 
     arg_parsed.add_argument("--positive_scale_pin", "-p", type=float, default=30, help="Scale pin for positive points in SAM2 model (default: 30)")
     arg_parsed.add_argument("--negative_scale_pin", "-n", type=float, default=0, help="Scale pin for negative points in SAM2 model (default: 0)")
-    #arg_parsed.add_argument("--seed", "-s", default=3, type=int, help="Random seed for reproducibility (default: 3)")
+
+    arg_parsed.add_argument("--csv_output", "-q", default="", type=str, help="CSV output format (default: N/A)")
     parsed = arg_parsed.parse_args()
+    if (parsed.csv_output != ""):
+        parsed.csv = True
+        with open(parsed.csv_output, "w") as f:
+            f.write("filepath,caption\n")
+        logger.info(f"CSV output format set to: {parsed.csv_output}")
     if parsed.require_yolo and not parsed.yolo:
         parsed.yolo = True
         logger.warning(f"--require_yolo has been set without --yolo. Auto enabling YOLO.")

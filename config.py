@@ -4,6 +4,8 @@ from loguru import logger
 
 class Config:
     def __init__(self, config_dict: Dict[str, Any]):
+        self.csv_prefixes = config_dict.get("csv_prefixes", [])
+        self.csv_postfixes = config_dict.get("csv_postfixes", [])
         self.prefixes = config_dict.get("prefixes", [])
         self.items = config_dict.get("items", [])
         self.postfixes = config_dict.get("postfixes", [])
@@ -20,7 +22,12 @@ class Config:
     def get_postfixes(self) -> Sequence[str]:
         return self.postfixes
 
-    
+    def get_csv_prefixes(self) -> Sequence[str]:
+        return self.csv_prefixes
+
+    def get_csv_postfixes(self) -> Sequence[str]:
+        return self.csv_postfixes
+
     def get_prompts(self) -> List[str]:
         """
         Generate a list of prompt strings by combining each item with every prefix and postfix.

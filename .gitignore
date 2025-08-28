@@ -16,3 +16,7 @@ demo/backend/checkpoints/*.pt
 output/
 dataset_cars/
 *.log
+*.csv
+logs/
+log/
+.gradio/

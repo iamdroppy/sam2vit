@@ -21,6 +21,7 @@ from image_processor import process_sam2, process_image, process_yolo
 from sam_model import SamModel
 from yolo_model import YoloModel
 from config import Config, load_config
+from utils import write_to_csv
 
 import shutil
 
@@ -150,6 +151,11 @@ def process(args: argparse.Namespace, clip_model: ClipModel, sam2_model: SamMode
                         if args.output_original:
                             out: Image = original_img
                         out.save(output_path)
+                        if args.csv:
+                            for prefix in config.get_csv_prefixes():
+                                for postfix in config.get_csv_postfixes():
+                                    write_to_csv(args.csv_output, output_path, f"{prefix} {result['item']} {postfix}")
+                                    logger.trace(f"Written to CSV: {args.csv_output}, {output_path}, {result['item']}")
                         logger.debug(f"{result['item'].capitalize() if result['item'] else 'Unknown'} ({result['probability']:4f}%)\n\t\t\t\t\t\t--> `{result['prompt']}` ")
                         return True
                     else:
