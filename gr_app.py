@@ -163,7 +163,7 @@ def run_segmentation_and_classification(
         segmented_image = result.get("segmented_image")
         probability = result.get("probability", 0.0)
         prompt_used = result.get("prompt", "")
-        return segmented_image, prompt_used, f"{probability:.2f}", predicted_item.replace('"', '') if predicted_item else "N/A"
+        return segmented_image, prompt_used, f"{probability:.2f}%", predicted_item if predicted_item else "N/A"
 
     except Exception as e:
         logger.exception("Error during segmentation/classification.")
