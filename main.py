@@ -144,8 +144,8 @@ def process(args: argparse.Namespace, clip_model: ClipModel, sam2_model: SamMode
                 result = process_image(result_seg, config, prompts, clip_model)
 
                 if result is not None:
-                    if '"' + result["item"] + '"' in items:
-                        result["item"] = result["item"].replace('"', '')
+                    result["item"] = str.strip(result["item"], '"') if result["item"] != '""' else "unknown"
+                    if result["item"].trim('"') in items:
                         os.makedirs(os.path.join(args.output_dir, result["item"]), exist_ok=True)
                         output_path = os.path.join(args.output_dir, result["item"], file.replace(".jpg", ".png").replace(".jpeg", ".png"))
                         out: Image = result["segmented_image"]

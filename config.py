@@ -22,12 +22,7 @@ class Config:
         return self.prefixes
 
     def get_items(self) -> Sequence[str]:
-        # return self.items
-        # all items must be quoted ""
-        new_items = []
-        for item in self.items:
-            new_items.append('"' + item + '"')
-        return new_items
+        return self.items
 
     def get_postfixes(self) -> Sequence[str]:
         return self.postfixes

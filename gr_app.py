@@ -156,8 +156,8 @@ def run_segmentation_and_classification(
         if result is None:
             return None, "No valid segmentation or classification result.", "N/A", "N/A"
 
-        predicted_item = result.get("item")
-        if items and '"' + predicted_item + '"' not in items:
+        predicted_item = str.strip(result.get("item"), '"') if result.get("item") != '"' else "unknown"
+        if predicted_item not in items:
             return None, f"Predicted item '{predicted_item}' is not in the allowed items list.", "N/A", "N/A"
 
         segmented_image = result.get("segmented_image")
