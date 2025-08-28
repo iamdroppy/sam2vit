@@ -7,7 +7,12 @@ class Config:
         self.csv_prefixes = config_dict.get("csv_prefixes", [])
         self.csv_postfixes = config_dict.get("csv_postfixes", [])
         self.prefixes = config_dict.get("prefixes", [])
-        self.items = config_dict.get("items", [])
+        items = config_dict.get("items", [])
+
+        self.items = []
+        for item in items:
+            self.items.append('"' + item + '"')
+
         self.postfixes = config_dict.get("postfixes", [])
         self.yolo_model = config_dict.get("yolo_model", "yolo11x-seg.pt")
         self.yolo_confidence_threshold = config_dict.get("yolo_confidence_threshold", 0.5)
@@ -17,7 +22,12 @@ class Config:
         return self.prefixes
 
     def get_items(self) -> Sequence[str]:
-        return self.items
+        # return self.items
+        # all items must be quoted ""
+        new_items = []
+        for item in self.items:
+            new_items.append('"' + item + '"')
+        return new_items
 
     def get_postfixes(self) -> Sequence[str]:
         return self.postfixes

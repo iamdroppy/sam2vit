@@ -99,13 +99,13 @@ def run_segmentation_and_classification(
     postfixes_in,
     yolo_prompts_in,
     seed: int,
-) -> Tuple[Optional[Image.Image], str]:
+) -> Tuple[Optional[Image.Image], str, str, str]:
     try:
         if Definitions.clip_model is None or Definitions.sam2_model is None:
-            return None, "Models are not initialized. Please restart or check setup."
+            return None, "Models are not initialized. Please restart or check setup.", "N/A", "N/A"
 
         if image is None:
-            return None, "Please provide an input image."
+            return None, "Please provide an input image.", "N/A", "N/A"
 
         prefixes = normalize_list(prefixes_in)
         items = normalize_list(items_in)
@@ -113,11 +113,11 @@ def run_segmentation_and_classification(
         yolo_prompts = normalize_list(yolo_prompts_in)
 
         if len(items) == 0:
-            return None, "Please add at least one Item."
+            return None, "Please add at least one Item.", "N/A", "N/A"
         if len(prefixes) == 0:
-            return None, "Please add at least one Prefix."
+            return None, "Please add at least one Prefix.", "N/A", "N/A"
         if len(postfixes) == 0:
-            return None, "Please add at least one Postfix."
+            return None, "Please add at least one Postfix.", "N/A", "N/A"
 
         cfg = {
             "csv_prefixes": [],
@@ -140,36 +140,34 @@ def run_segmentation_and_classification(
         if not getattr(args, "no_sam", False) and Definitions.sam2_model is not None:
             result_seg = process_sam2(args, image, Definitions.sam2_model)
             if result_seg is None:
-                return None, "Segmentation failed."
+                return None, "Segmentation failed.", "N/A", "N/A"
 
         if getattr(args, "post_process_yolo", False) and Definitions.yolo_model is not None:
             yolo_img, label, confidence = Definitions.yolo_model.predict(result_seg)
             if yolo_img is not None:
                 result_seg = yolo_img
             else:
-                return None, "YOLO post-processing required but no valid detection was made."
+                return None, "YOLO post-processing required but no valid detection was made.", "N/A", "N/A"
 
         prompt_list = Definitions.sam2_model.config.get_prompts()
         prompts = [p for p in prompt_list]
 
         result = process_image(result_seg, Definitions.sam2_model.config, prompts, Definitions.clip_model)
         if result is None:
-            return None, "No valid segmentation or classification result."
+            return None, "No valid segmentation or classification result.", "N/A", "N/A"
 
         predicted_item = result.get("item")
-        if items and predicted_item not in items:
-            return None, f"Predicted item '{predicted_item}' is not in the allowed items list."
+        if items and '"' + predicted_item + '"' not in items:
+            return None, f"Predicted item '{predicted_item}' is not in the allowed items list.", "N/A", "N/A"
 
         segmented_image = result.get("segmented_image")
         probability = result.get("probability", 0.0)
         prompt_used = result.get("prompt", "")
-
-        text = f"Prompt: {prompt_used}\nProbability: {probability:.2f}%\nItem: {predicted_item}"
-        return segmented_image, text
+        return segmented_image, prompt_used, f"{probability:.2f}", predicted_item.replace('"', '') if predicted_item else "N/A"
 
     except Exception as e:
         logger.exception("Error during segmentation/classification.")
-        return None, f"Error: {e}"
+        return None, f"Error: {e}", "N/A", "N/A"
 
 
 def create_interface(args: argparse.Namespace) -> gr.Blocks:
@@ -218,13 +216,18 @@ def create_interface(args: argparse.Namespace) -> gr.Blocks:
                 )
 
             with gr.Column():
-                output_image = gr.Image(label="Output Image", type="pil")
-                output_text = gr.Textbox(label="Output Text", lines=10)
+                with gr.Row():
+                    with gr.Column():
+                        output_image = gr.Image(label="Output Image", type="pil")
+                    with gr.Column():
+                        output_prompt = gr.Textbox(label="Predicted Prompt", lines=1)
+                        output_confidence = gr.Textbox(label="Confidence (%)", lines=1)
+                        output_item = gr.Textbox(label="Predicted Item", lines=1)
 
         run_button.click(
             fn=run_segmentation_and_classification,
             inputs=[args_state, input_image, prefix_table, item_table, postfix_table, yolo_table, seed_input],
-            outputs=[output_image, output_text],
+            outputs=[output_image, output_prompt, output_confidence, output_item],
         )
 
     return ui
