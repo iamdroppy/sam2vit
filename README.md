@@ -38,17 +38,17 @@ Prefixes/Items/Postfixes:
 }
 ```
 
-|                                                      |                                  |
-|------------------------------------------------------|----------------------------------|
-| ![(Input dir)](images/input.png)                     | ![Output dir](images/output.png) |
-| ![(gradio)](images/gradio.png) via `python gr_app.py` |                                  |
+|                                                       |                                                         |
+|-------------------------------------------------------|---------------------------------------------------------|
+| ![(Input dir)](images/input.png)                      | ![Output dir](images/output.png)                        |
+| ![(gradio)](images/gradio.png) via `python gr_app.py` | ![(gradio2)](images/gradio2.png) via `python gr_app.py` |
 
 ## Key features
 
 - SAM 2 center-focused segmentation (center point + margin refinement)
 - Background painted white; output as RGBA
 - Prompt builder (prefix × items × postfix) for dense CLIP scoring
-- YOLOv11 for pre-proccessing or postprocessing
+- YOLOv11 for pre-processing or postprocessing
 - CLIP-based top-prompt selection and result reorganization
 - Device-aware execution: CUDA, Apple MPS, or CPU (MPS CPU fallback supported)
 - Gradio UI via `python gr_app.py`
@@ -106,12 +106,18 @@ pip install git+https://github.com/openai/CLIP.git
 1. Prepare inputs in a folder (e.g., `cars_input/`), and make sure `cars_output` is empty or non-existant.
 
 2. Execute __(example)__:
-```bash
+```commandline
 python main.py --input_dir cars_input --output_dir cars_output --require_yolo --post_process_yolo
 ```
 
-**Output**:
+or
 
+```commandline
+python gr_app.py
+```
+
+**Output**:
+ - **For gradio** it will show the results in the UI
  - For each image in directory `cars_input`:
    - `--require-yolo` will run a yolo check based on `--yolo_prompts`
    - SAM2 processing (no `--no-sam`)

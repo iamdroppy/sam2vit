@@ -4,10 +4,10 @@ The `images/` folder contains only visual assets that illustrate the project's s
 
 All project images are presented below for quick reference:
 
-|                                             |                       |
-|---------------------------------------------|-----------------------|
-| ![Input](input.png)                         | ![Output](output.png) |
-| ![Gradio](gradio.png) via `python gr_app.py` |                       |
+|                                              |                                               |
+|----------------------------------------------|-----------------------------------------------|
+| ![Input](input.png)                          | ![Output](output.png)                         |
+| ![Gradio](gradio.png) via `python gr_app.py` | ![Gradio](gradio2.png) via `python gr_app.py` |
 
 > Some assets should be referenced by the root's `README.md`.
 
