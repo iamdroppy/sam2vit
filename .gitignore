@@ -20,3 +20,4 @@ dataset_cars/
 logs/
 log/
 .gradio/
+.idea/
