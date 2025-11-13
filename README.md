@@ -55,7 +55,7 @@ Prefixes/Items/Postfixes:
 
 ## How it works (pipeline)
 
- - Input image → (optional) YOLO → SAM 2 segmentation (center seed + margin refinement) with Background painted white (RGBA) → (optional post processing) yolo → Prompt set built from prefixes/items/postfixes → CLIP scores all prompts → Best prompt selected → Image saved to output/<item>/
+ - Input image → (optional) YOLO → SAM 2 segmentation (center seed + margin refinement) with Background painted white (RGBA) → (optional post processing) yolo → Prompt set built from prefixes/items/postfixes → CLIP scores all prompts → Best prompt selected → Image saved to output/<item>
 
 ## Requirements
 
